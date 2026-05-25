@@ -410,9 +410,10 @@ for _slot, _key_env in [("", "HF_TOKEN"), ("2", "HF_TOKEN_2")]:
     _hf_key = os.environ.get(_key_env, "").strip()
     if not _hf_key:
         continue
-    _label = f" [token{_slot}]" if _slot else ""
+    _is_t2 = (_slot == "2")
+    _label = " [token2]" if _is_t2 else ""
     for _p in _HF_PROVIDERS:
-        _pid = _p["id"] + (_slot and f"-t{_slot}" or "")
+        _pid = _p["id"] + ("-t2" if _is_t2 else "")
         CHAT_PROVIDERS[_pid] = {
             "type":        "openai_compatible",
             "url":         _p["url"],
@@ -420,6 +421,7 @@ for _slot, _key_env in [("", "HF_TOKEN"), ("2", "HF_TOKEN_2")]:
             "api_key":     _hf_key,
             "desc":        _p["desc"] + _label,
             "hf_provider": True,
+            "is_t2":       _is_t2,
         }
         CHAT_ORDER.append(_pid)
         if _p["tool_cap"]:
@@ -584,30 +586,39 @@ import re as _re
 _INTENT_PATTERNS = {
     "coding": _re.compile(
         r'\b(code|kode|coding|program|script|function|fungsi|class|method|debug|error|bug|'
-        r'implement|buat fungsi|bikin fungsi|algoritma|algorithm|python|javascript|typescript|'
+        r'implement|buat fungsi|bikin fungsi|buatkan fungsi|buatkan script|buatkan program|'
+        r'bikin script|bikin program|bikin kode|buat kode|buat script|buat program|'
+        r'algoritma|algorithm|python|javascript|typescript|java|kotlin|golang|rust|'
         r'react|nodejs|html|css|sql|bash|shell|api|endpoint|deploy|git|npm|pip|library|'
         r'module|package|refactor|syntax|compile|runtime|exception|stacktrace|snippet|'
-        r'loop|recursion|array|object|json|xml|regex|database|query|orm|framework)\b',
+        r'loop|recursion|array|object|json|xml|regex|database|query|orm|framework|'
+        r'otomasi|automate|bot|scraper|crawler|webhook|cron|scheduler)\b',
         _re.IGNORECASE
     ),
     "math": _re.compile(
-        r'\b(hitung|calculate|matematika|math|rumus|formula|equation|persamaan|'
-        r'statistik|statistic|probabilitas|probability|integral|turunan|derivative|'
-        r'matriks|matrix|vektor|vector|aljabar|algebra|kalkulus|calculus|buktikan|prove|'
-        r'optimasi|optimization|regresi|regression|distribusi|distribution)\b',
+        r'\b(hitung|hitungan|kalkulator|calculator|calculate|matematika|math|rumus|formula|'
+        r'equation|persamaan|statistik|statistic|probabilitas|probability|integral|'
+        r'turunan|derivative|matriks|matrix|vektor|vector|aljabar|algebra|'
+        r'kalkulus|calculus|buktikan|prove|optimasi|optimization|regresi|regression|'
+        r'distribusi|distribution|konversi|convert|persen|percent|rata.?rata|average|'
+        r'median|modus|standar deviasi|standard deviation)\b',
         _re.IGNORECASE
     ),
     "analysis": _re.compile(
-        r'\b(analisis|analyze|analysis|bandingkan|compare|evaluasi|evaluate|strategi|strategy|'
-        r'riset|research|jelaskan mendalam|explain in depth|pros dan cons|pros and cons|'
-        r'kelebihan|kekurangan|advantages|disadvantages|review|assessment|laporan|report|'
-        r'kesimpulan|conclusion|rekomendasi|recommendation|mendalam|in-depth|detailed|'
-        r'komprehensif|comprehensive|elaborasi|elaborate|breakdown|rangkum|summarize)\b',
+        r'\b(analisis|analisa|analyze|analysis|bandingkan|compare|evaluasi|evaluate|'
+        r'strategi|strategy|riset|research|jelaskan mendalam|explain in depth|'
+        r'pros dan cons|pros and cons|kelebihan|kekurangan|advantages|disadvantages|'
+        r'review|assessment|laporan|report|kesimpulan|conclusion|rekomendasi|recommendation|'
+        r'mendalam|in-depth|detailed|komprehensif|comprehensive|elaborasi|elaborate|'
+        r'breakdown|rangkum|summarize|apa pendapat|what do you think|opini|opinion|'
+        r'jelaskan kenapa|explain why|penyebab|cause|dampak|impact|efek|effect)\b',
         _re.IGNORECASE
     ),
     "search": _re.compile(
-        r'\b(cari|search|berita|news|terkini|latest|update terbaru|hari ini|today|'
-        r'sekarang|current|real.?time|live data|harga saham|stock price|cuaca|weather)\b',
+        r'\b(cari|carikan|cek|search|berita|news|terkini|terbaru|latest|update terbaru|'
+        r'hari ini|today|sekarang|current|real.?time|live data|'
+        r'harga saham|stock price|cuaca|weather|informasi tentang|info tentang|'
+        r'siapa itu|who is|apa itu|what is|dimana|where is|kapan|when did)\b',
         _re.IGNORECASE
     ),
 }
@@ -637,15 +648,40 @@ def detect_intent(messages: list) -> str:
 
 def get_order_for_intent(intent: str) -> list:
     """
-    Kembalikan urutan provider yang optimal untuk intent tertentu.
-    Hanya provider yang aktif (ada di CHAT_PROVIDERS) yang dimasukkan,
-    sisanya diambil dari CHAT_ORDER supaya tidak ada provider yang terlewat.
+    Urutan provider optimal untuk intent dengan fallback tier:
+      Tier 1 : HF token-1 preferred untuk intent
+      Tier 2 : HF token-2 preferred (langsung setelah t1 pasangannya)
+      Tier 3 : Non-HF preferred (groq, gemini, dll)
+      Tier 4 : Sisa provider dari CHAT_ORDER (hf-fast, static providers)
+
+    Contoh untuk coding:
+      hf-cerebras-qwen → hf-cerebras-qwen-t2 → hf-cerebras → hf-cerebras-t2
+      → hf-hyperbolic → hf-hyperbolic-t2 → groq → cerebras → ...
+
+    Contoh untuk search (perplexity/gemini diprioritaskan):
+      perplexity → gemini → hf-hyperbolic → hf-hyperbolic-t2
+      → hf-cerebras-qwen → hf-cerebras-qwen-t2 → groq → ...
     """
     preferred = _INTENT_PREFERRED.get(intent, [])
-    available_preferred = [p for p in preferred if p in CHAT_PROVIDERS]
-    # Tambahkan sisa provider dari CHAT_ORDER yang belum ada di preferred
-    remaining = [p for p in CHAT_ORDER if p not in available_preferred]
-    return available_preferred + remaining
+
+    ordered = []
+    seen = set()
+    for pid in preferred:
+        if pid not in CHAT_PROVIDERS or pid in seen:
+            continue
+        ordered.append(pid)
+        seen.add(pid)
+        # Jika ini HF t1 provider, injeksi t2-nya langsung setelahnya
+        # sebelum pindah ke provider preferred berikutnya
+        if CHAT_PROVIDERS[pid].get("hf_provider") and not CHAT_PROVIDERS[pid].get("is_t2"):
+            t2_pid = pid + "-t2"
+            if t2_pid in CHAT_PROVIDERS and t2_pid not in seen:
+                ordered.append(t2_pid)
+                seen.add(t2_pid)
+
+    # Sisa dari CHAT_ORDER yang belum masuk (hf-fast, static providers, dll)
+    remaining = [p for p in CHAT_ORDER if p not in seen]
+    return ordered + remaining
 
 
 IMAGE_PROVIDERS = {
@@ -806,6 +842,21 @@ def run_chat(cfg, messages: list, model_override=None):
                     json=payload,
                     timeout=30,
                 )
+        # Jika HF t1 provider kena rate limit (429), coba HF_TOKEN_2 langsung
+        # sebagai fast-path — hanya jika ini bukan t2 dan token-nya beda
+        if r.status_code == 429 and cfg.get("hf_provider") and not cfg.get("is_t2"):
+            hf_token_2 = os.environ.get("HF_TOKEN_2", "").strip()
+            if hf_token_2 and hf_token_2 != cfg.get("api_key"):
+                print(f"[HF] {cfg.get('model')} token-1 rate-limited → fast-retry token-2")
+                r = requests.post(
+                    cfg["url"],
+                    headers={
+                        "Authorization": f"Bearer {hf_token_2}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    timeout=30,
+                )
         r.raise_for_status()
         data = r.json()
         msg = data["choices"][0]["message"]
@@ -830,15 +881,28 @@ def run_chat(cfg, messages: list, model_override=None):
     return resp.choices[0].message.content
 
 
+def _provider_tier(pid: str) -> str:
+    """Label tier provider untuk logging."""
+    cfg = CHAT_PROVIDERS.get(pid, {})
+    if cfg.get("hf_provider"):
+        return "HF-t2" if cfg.get("is_t2") else "HF-t1"
+    if cfg.get("type") == "openai_compatible":
+        return "non-HF"
+    return "static"
+
+
 def run_chat_fallback(messages: list, model_override=None, require_tool_call: bool = False, intent: str = "general"):
     """
-    Coba setiap provider secara berurutan.
-    - intent     : hasil detect_intent(), menentukan urutan provider optimal
+    Coba setiap provider secara berurutan dengan tier:
+      HF token-1 → HF token-2 → non-HF (groq/gemini/dll) → static (pollinations/dll)
+
+    - intent            : hasil detect_intent(), menentukan urutan provider optimal
     - require_tool_call : provider tanpa tool_calls JSON dianggap gagal
     """
     errors = {}
-    # Pilih urutan berdasarkan intent (smart routing)
+    # Pilih urutan berdasarkan intent (smart routing + t1→t2 interleaving)
     base_order = get_order_for_intent(intent)
+
     # Saat require_tool_call, dahulukan provider tool-capable dalam urutan intent
     if require_tool_call:
         tc_set = set(TOOL_CAPABLE_ORDER)
@@ -846,30 +910,45 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
                 [p for p in base_order if p not in tc_set]
     else:
         order = base_order
+
+    print(f"[Routing] intent={intent} tool_call={require_tool_call} → mencoba {len(order)} provider")
+
     for pk in order:
+        tier = _provider_tier(pk)
         try:
+            print(f"[{tier}] mencoba {pk} ...")
             text = run_chat(CHAT_PROVIDERS[pk], messages, model_override)
             if not text or not text.strip():
                 errors[pk] = "Respons kosong"
+                print(f"[{tier}] {pk} → respons kosong, skip")
                 continue
             # Jika tools diperlukan, cek apakah model menghasilkan tool call
             if require_tool_call:
                 _, is_tc = parse_tool_calls(text)
                 if not is_tc:
                     errors[pk] = "Model tidak menghasilkan tool_calls"
+                    print(f"[{tier}] {pk} → tidak menghasilkan tool_calls, skip")
                     continue
+            print(f"[{tier}] {pk} → sukses ✓")
             return text, pk, errors
         except Exception as e:
             errors[pk] = str(e)
-    # Semua gagal produce tool_call → fallback ke teks biasa (jawab apa adanya)
+            print(f"[{tier}] {pk} → error: {e}")
+
+    # Semua provider dengan tool_call gagal → fallback ke respons teks biasa
     if require_tool_call:
-        for pk in CHAT_ORDER:
+        print("[Routing] Semua provider tool-capable gagal → fallback teks biasa")
+        for pk in order:
+            tier = _provider_tier(pk)
             try:
                 text = run_chat(CHAT_PROVIDERS[pk], messages, model_override)
                 if text and text.strip():
+                    print(f"[{tier}] {pk} → sukses (plain text fallback) ✓")
                     return text, pk, errors
             except Exception:
                 pass
+
+    print("[Routing] Semua provider gagal")
     return None, None, errors
 
 
