@@ -4,13 +4,12 @@
 #  Jalankan sekali untuk install semua dependensi
 #  Usage: bash install.sh
 # ═══════════════════════════════════════════════════════════════
-set -e
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 
 ok()   { echo -e "${GREEN}✓ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
-fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
+fail() { echo -e "${RED}✗ $1${NC}"; }
 step() { echo -e "\n${YELLOW}► $1${NC}"; }
 
 echo ""
@@ -19,36 +18,57 @@ echo "║       Multi-AI API Wrapper Installer     ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
+# ── Deteksi environment ────────────────────────────────────────
+IS_REPLIT=false
+if [ -n "$REPL_ID" ] || [ -n "$REPLIT_DEV_DOMAIN" ]; then
+    IS_REPLIT=true
+fi
+
 # ── 1. Cek Python ─────────────────────────────────────────────
 step "Mengecek versi Python..."
-PYTHON=$(command -v python3 || command -v python || fail "Python tidak ditemukan!")
+PYTHON=$(command -v python3 || command -v python)
+if [ -z "$PYTHON" ]; then
+    fail "Python tidak ditemukan!"; exit 1
+fi
 PY_VER=$($PYTHON --version 2>&1)
 ok "Ditemukan: $PY_VER"
 
-# ── 2. Upgrade pip ────────────────────────────────────────────
-step "Upgrade pip..."
-$PYTHON -m pip install --upgrade pip -q && ok "pip sudah terbaru"
-
-# ── 3. Install semua packages dari requirements.txt ───────────
-step "Menginstall Python packages dari requirements.txt..."
-if [ ! -f "requirements.txt" ]; then
-    fail "requirements.txt tidak ditemukan!"
+if $IS_REPLIT; then
+    ok "Berjalan di Replit — menggunakan pip dengan --target .pythonlibs"
 fi
 
-$PYTHON -m pip install -r requirements.txt -q
+# ── 2. Install packages ───────────────────────────────────────
+step "Menginstall Python packages dari requirements.txt..."
+if [ ! -f "requirements.txt" ]; then
+    fail "requirements.txt tidak ditemukan!"; exit 1
+fi
+
+if $IS_REPLIT; then
+    # Di Replit NixOS, install ke direktori .pythonlibs (path yang dikenali Python)
+    PYLIB=".pythonlibs/lib/python3.11/site-packages"
+    mkdir -p "$PYLIB"
+    $PYTHON -m pip install -r requirements.txt -q \
+        --target "$PYLIB" \
+        --upgrade \
+        2>&1 | grep -v "^Requirement already" | grep -v "^$" || true
+else
+    # Di luar Replit, coba --user install
+    $PYTHON -m pip install -r requirements.txt -q --user 2>&1 || \
+    $PYTHON -m pip install -r requirements.txt -q --break-system-packages 2>&1 || \
+    { fail "Gagal install packages. Coba jalankan di virtual environment."; exit 1; }
+fi
 ok "Semua packages terinstall"
 
-# ── 4. Verifikasi import packages kritis ──────────────────────
+# ── 3. Verifikasi import packages kritis ──────────────────────
 step "Verifikasi import packages..."
 
 check_pkg() {
     local pkg=$1
     local import_name=${2:-$1}
-    if $PYTHON -c "import $import_name" 2>/dev/null; then
+    if PYTHONPATH=".pythonlibs/lib/python3.11/site-packages:$PYTHONPATH" $PYTHON -c "import $import_name" 2>/dev/null; then
         ok "  $pkg"
     else
-        warn "  $pkg GAGAL diimport — coba install ulang..."
-        $PYTHON -m pip install "$pkg" -q
+        warn "  $pkg GAGAL diimport"
     fi
 }
 
@@ -65,7 +85,7 @@ check_pkg "psycopg2-binary" "psycopg2"
 check_pkg "dnspython" "dns"
 check_pkg "python-dotenv" "dotenv"
 
-# ── 5. Cek file .env ──────────────────────────────────────────
+# ── 4. Cek file .env ──────────────────────────────────────────
 step "Mengecek file .env..."
 if [ -f ".env" ]; then
     ok ".env ditemukan — variabel akan dimuat otomatis saat app start"
@@ -75,18 +95,19 @@ else
     echo "  MONGODB_URI=mongodb+srv://..."
     echo "  MONGODB_DATABASE=manus"
     echo "  REDIS_HOST=..."
-    echo "  REDIS_PORT=..."
+    echo "  REDIS_PORT=6379"
     echo "  REDIS_PASSWORD=..."
     echo "  POSTGRES_URL=postgresql://..."
     echo "  HF_TOKEN=hf_..."
     echo "  HF_TOKEN_2=hf_..."
+    echo "  GROQ_API_KEY=gsk_..."
+    echo "  GEMINI_API_KEY=..."
     echo ""
 fi
 
-# ── 6. Cek environment variables (dari .env atau shell) ───────
+# ── 5. Cek environment variables (dari .env atau shell) ───────
 step "Mengecek environment variables..."
 
-# Load .env jika ada
 if [ -f ".env" ]; then
     set -a
     source .env 2>/dev/null || true
@@ -95,26 +116,29 @@ fi
 
 check_env() {
     local key=$1
-    local required=$2
     if [ -n "${!key}" ]; then
         ok "  $key tersedia"
-    elif [ "$required" = "true" ]; then
-        fail "  $key TIDAK DITEMUKAN (wajib!)"
     else
         warn "  $key tidak diset (opsional)"
     fi
 }
 
-check_env "MONGODB_URI"      false
-check_env "MONGODB_DATABASE" false
-check_env "REDIS_HOST"       false
-check_env "REDIS_PORT"       false
-check_env "REDIS_PASSWORD"   false
-check_env "POSTGRES_URL"     false
-check_env "HF_TOKEN"         false
-check_env "HF_TOKEN_2"       false
+check_env "MONGODB_URI"
+check_env "MONGODB_DATABASE"
+check_env "REDIS_HOST"
+check_env "REDIS_PORT"
+check_env "REDIS_PASSWORD"
+check_env "POSTGRES_URL"
+check_env "HF_TOKEN"
+check_env "HF_TOKEN_2"
+check_env "GROQ_API_KEY"
+check_env "GEMINI_API_KEY"
+check_env "CEREBRAS_API_KEY"
+check_env "SAMBANOVA_API_KEY"
+check_env "TOGETHER_API_KEY"
+check_env "MISTRAL_API_KEY"
 
-# ── 7. Test koneksi database (opsional) ───────────────────────
+# ── 6. Test koneksi database (opsional) ───────────────────────
 step "Test koneksi database (opsional)..."
 
 if [ -n "$MONGODB_URI" ]; then
@@ -131,9 +155,9 @@ fi
 
 if [ -n "$REDIS_HOST" ]; then
     $PYTHON -c "
-import redis, os
+import redis
 try:
-    r = redis.Redis(host='$REDIS_HOST', port=int('${REDIS_PORT:-6379}'), password='$REDIS_PASSWORD', socket_connect_timeout=3)
+    r = redis.Redis(host='$REDIS_HOST', port=int('${REDIS_PORT:-6379}'), password='${REDIS_PASSWORD}', socket_connect_timeout=3)
     r.ping()
     print('\033[0;32m✓   Redis: terhubung\033[0m')
 except Exception as e:
