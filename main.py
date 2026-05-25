@@ -96,7 +96,7 @@ except Exception:
 
 # Path yang TIDAK perlu auth
 _PUBLIC_PATHS = {
-    "/", "/providers", "/v1/providers", "/v1/models",
+    "/", "/dashboard", "/providers", "/v1/providers", "/v1/models",
     "/auth/register", "/auth/login",
 }
 _PUBLIC_PREFIXES = ("/static/",)
@@ -1674,7 +1674,6 @@ input::placeholder{{color:var(--muted)}}
     <a href="/dashboard" class="btn-hero-secondary">Documentation</a>
   </div>
   <div class="hero-chips">
-    <span class="chip"><span class="chip-dot"></span>Automatic retries</span>
     <span class="chip"><span class="chip-dot"></span>One API key</span>
     <span class="chip"><span class="chip-dot"></span>Usage analytics</span>
     <span class="chip"><span class="chip-dot"></span>OpenAI SDK compatible</span>
