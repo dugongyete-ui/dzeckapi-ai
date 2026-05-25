@@ -1430,6 +1430,447 @@ def stream_tool_calls_response(tool_calls, provider_used, conv_id=None):
     yield "data: [DONE]\n\n"
 
 
+# ── Landing Page ──────────────────────────────────────────────────────────────
+
+def build_landing_html():
+    providers = [
+        "HuggingFace", "Groq", "Cerebras", "SambaNova", "Together AI",
+        "Google Gemini", "Mistral", "OpenAI", "DeepSeek", "Cohere",
+        "Pollinations", "Meta AI"
+    ]
+    ticker_items = "".join(
+        f'<div class="ticker-item"><span class="ticker-dot"></span>{p}</div>'
+        for p in providers * 4
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DzeckAPI — One API. Every AI Model.</title>
+<meta name="description" content="DzeckAPI is a unified AI gateway. One API key, access to every major AI model — HuggingFace, Groq, Cerebras, Gemini, Mistral, and more. OpenAI SDK compatible."/>
+<meta name="keywords" content="AI API, AI gateway, unified AI, multi-provider AI, OpenAI compatible, LLM API, DzeckAPI"/>
+<meta property="og:title" content="DzeckAPI — One API. Every AI Model."/>
+<meta property="og:description" content="One endpoint for every major AI provider. Switch models instantly, no lock-in."/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+:root{{
+  --bg:#080808;--surface:#111111;--surface2:#181818;--surface3:#202020;
+  --border:#2a2a2a;--border-hi:#383838;
+  --text:#f0f0f0;--sub:#a0a0a0;--muted:#666;
+  --accent:#d97757;--accent-dim:rgba(217,119,87,.12);--accent-border:rgba(217,119,87,.35);
+  --green:#4ade80;--mono:'JetBrains Mono','Fira Code','Menlo',monospace;
+  --r:10px;--r-sm:8px;
+}}
+html{{scroll-behavior:smooth}}
+body{{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}}
+a{{color:inherit;text-decoration:none}}
+::-webkit-scrollbar{{width:4px}}
+::-webkit-scrollbar-thumb{{background:var(--border-hi);border-radius:4px}}
+
+/* ── Nav ── */
+nav{{position:fixed;top:0;left:0;right:0;z-index:200;border-bottom:1px solid var(--border);background:rgba(8,8,8,.85);backdrop-filter:blur(20px);height:58px;display:flex;align-items:center;padding:0 32px}}
+.nav-inner{{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}}
+.nav-logo{{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.3px}}
+.logo-mark{{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}}
+.nav-links{{display:flex;align-items:center;gap:6px}}
+.nav-link{{color:var(--sub);font-size:13.5px;padding:6px 12px;border-radius:7px;transition:color .15s,background .15s;font-weight:500}}
+.nav-link:hover{{color:var(--text);background:var(--surface2)}}
+.nav-cta{{display:flex;align-items:center;gap:8px}}
+.btn-ghost{{background:none;border:1px solid var(--border-hi);color:var(--text);padding:7px 16px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}}
+.btn-ghost:hover{{background:var(--surface2);border-color:var(--sub)}}
+.btn-primary{{background:var(--text);color:#000;padding:7px 18px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:opacity .15s}}
+.btn-primary:hover{{opacity:.85}}
+
+/* ── Hero ── */
+.hero{{padding:140px 24px 80px;text-align:center;position:relative;overflow:hidden}}
+.hero::before{{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(217,119,87,.08) 0%,transparent 70%);pointer-events:none}}
+.hero-badge{{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border-hi);border-radius:99px;padding:5px 14px 5px 10px;font-size:12.5px;color:var(--sub);margin-bottom:28px}}
+.hero-badge-dot{{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}}
+.hero h1{{font-size:clamp(42px,6vw,72px);font-weight:800;letter-spacing:-2.5px;line-height:1.05;max-width:700px;margin:0 auto 22px}}
+.hero h1 em{{font-style:normal;color:var(--accent)}}
+.hero-sub{{font-size:17px;color:var(--sub);max-width:480px;margin:0 auto 40px;line-height:1.65;font-weight:400}}
+.hero-cta{{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:56px}}
+.btn-hero-primary{{background:var(--text);color:#000;padding:12px 28px;border-radius:99px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:opacity .15s;display:inline-flex;align-items:center;gap:8px}}
+.btn-hero-primary:hover{{opacity:.85}}
+.btn-hero-secondary{{background:none;border:1px solid var(--border-hi);color:var(--text);padding:12px 28px;border-radius:99px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:8px}}
+.btn-hero-secondary:hover{{background:var(--surface2);border-color:var(--sub)}}
+.hero-chips{{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}}
+.chip{{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}}
+.chip-dot{{width:5px;height:5px;border-radius:50%;background:var(--border-hi);flex-shrink:0}}
+
+/* ── Code widget ── */
+.code-widget{{max-width:700px;margin:0 auto 80px;background:var(--surface);border:1px solid var(--border-hi);border-radius:14px;overflow:hidden;text-align:left;box-shadow:0 32px 80px rgba(0,0,0,.5)}}
+.code-tabs{{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);background:var(--surface2);padding:0 16px}}
+.code-tab{{padding:11px 14px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}}
+.code-tab.active{{color:var(--text);border-bottom-color:var(--accent)}}
+.code-win-dots{{display:flex;gap:6px;margin-right:auto;order:-1}}
+.code-dot{{width:11px;height:11px;border-radius:50%}}
+.code-dot.r{{background:#ff5f57}}.code-dot.y{{background:#febc2e}}.code-dot.g{{background:#28c840}}
+.code-body{{padding:22px 24px;font-family:var(--mono);font-size:13px;line-height:1.8;color:#c9d1d9;overflow-x:auto}}
+.code-body .c{{color:#6e7681}}.code-body .k{{color:#ff7b72}}.code-body .s{{color:#a5d6ff}}
+.code-body .f{{color:#d2a8ff}}.code-body .n{{color:#ffa657}}.code-body .p{{color:#c9d1d9}}
+pre{{white-space:pre}}
+
+/* ── Ticker ── */
+.ticker-wrap{{overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface);padding:14px 0;margin-bottom:80px}}
+.ticker-track{{display:flex;gap:0;animation:ticker 32s linear infinite;width:max-content}}
+.ticker-track:hover{{animation-play-state:paused}}
+.ticker-item{{display:flex;align-items:center;gap:9px;padding:0 28px;font-size:13px;color:var(--sub);font-weight:500;white-space:nowrap}}
+.ticker-dot{{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.6;flex-shrink:0}}
+@keyframes ticker{{0%{{transform:translateX(0)}}100%{{transform:translateX(-50%)}}}}
+
+/* ── Section ── */
+.section{{max-width:1100px;margin:0 auto;padding:0 24px 100px}}
+.sec-label{{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:12px}}
+.sec-title{{font-size:clamp(28px,3.5vw,40px);font-weight:800;letter-spacing:-1.2px;line-height:1.15;margin-bottom:14px}}
+.sec-sub{{font-size:16px;color:var(--sub);max-width:500px;line-height:1.65}}
+
+/* ── Features grid ── */
+.features-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:52px}}
+.feat{{background:var(--surface);padding:28px 26px;transition:background .15s}}
+.feat:hover{{background:var(--surface2)}}
+.feat-icon{{width:38px;height:38px;border-radius:9px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px}}
+.feat h3{{font-size:15px;font-weight:700;letter-spacing:-.3px;margin-bottom:7px}}
+.feat p{{font-size:13.5px;color:var(--sub);line-height:1.6}}
+
+/* ── Steps ── */
+.steps{{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:52px}}
+.step{{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px}}
+.step-num{{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--accent);margin-bottom:14px;text-transform:uppercase}}
+.step h3{{font-size:15px;font-weight:700;letter-spacing:-.3px;margin-bottom:10px}}
+.step-code{{background:var(--surface2);border:1px solid var(--border-hi);border-radius:7px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--sub);margin-top:14px;overflow-x:auto;line-height:1.7}}
+
+/* ── CTA ── */
+.cta-section{{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:64px 48px;text-align:center;margin-bottom:80px;position:relative;overflow:hidden}}
+.cta-section::before{{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(217,119,87,.05) 0%,transparent 70%);pointer-events:none}}
+.cta-section h2{{font-size:clamp(26px,3.5vw,40px);font-weight:800;letter-spacing:-1.2px;margin-bottom:14px}}
+.cta-section p{{font-size:16px;color:var(--sub);margin-bottom:36px;max-width:440px;margin-left:auto;margin-right:auto}}
+.cta-meta{{font-size:12.5px;color:var(--muted);margin-top:18px}}
+
+/* ── Footer ── */
+footer{{border-top:1px solid var(--border);padding:32px;text-align:center;font-size:13px;color:var(--muted)}}
+footer a{{color:var(--sub);transition:color .15s}}
+footer a:hover{{color:var(--text)}}
+
+/* ── Auth Modal ── */
+.overlay{{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:300;align-items:center;justify-content:center}}
+.overlay.open{{display:flex}}
+.modal{{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;width:100%;max-width:380px;margin:16px;padding:28px 26px 24px;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.6)}}
+.modal-close{{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;font-family:inherit;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .15s}}
+.modal-close:hover{{background:var(--surface2);color:var(--text)}}
+.modal h2{{font-size:18px;font-weight:700;margin-bottom:4px;letter-spacing:-.4px}}
+.modal .sub{{color:var(--muted);font-size:13px;margin-bottom:22px}}
+.tab-row{{display:flex;gap:3px;margin-bottom:20px;background:var(--surface2);border-radius:8px;padding:3px;border:1px solid var(--border)}}
+.tab{{flex:1;padding:7px;border-radius:6px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}}
+.tab.active{{background:var(--surface3);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4)}}
+.field{{margin-bottom:14px}}
+label{{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:500}}
+input{{width:100%;background:var(--surface2);border:1px solid var(--border-hi);border-radius:8px;padding:10px 13px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s}}
+input:focus{{border-color:var(--accent-border);box-shadow:0 0 0 3px var(--accent-dim)}}
+input::placeholder{{color:var(--muted)}}
+.modal-btn{{width:100%;background:var(--accent);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:6px}}
+.modal-btn:hover{{opacity:.88}}
+.modal-btn:disabled{{opacity:.4;cursor:not-allowed}}
+.modal-err{{color:#f87171;font-size:12.5px;margin-top:10px;display:none;padding:9px 13px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:7px}}
+
+@media(max-width:900px){{
+  .features-grid{{grid-template-columns:repeat(2,1fr)}}
+  .steps{{grid-template-columns:1fr}}
+  nav .nav-links{{display:none}}
+}}
+@media(max-width:600px){{
+  nav{{padding:0 16px}}
+  .hero{{padding:110px 16px 60px}}
+  .hero h1{{letter-spacing:-1.5px}}
+  .features-grid{{grid-template-columns:1fr}}
+  .cta-section{{padding:40px 24px}}
+  .section{{padding:0 16px 70px}}
+}}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">
+      <div class="logo-mark">D</div>
+      DzeckAPI
+    </a>
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#get-started" class="nav-link">Get Started</a>
+      <a href="/dashboard" class="nav-link">Docs</a>
+    </div>
+    <div class="nav-cta">
+      <button class="btn-ghost" onclick="openModal('login')">Log in</button>
+      <button class="btn-primary" onclick="openModal('register')">Sign up free</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Auth Modal -->
+<div class="overlay" id="auth-overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2 id="modal-title">Sign in</h2>
+    <p class="sub" id="modal-sub">Access all AI models with your API key</p>
+    <div class="tab-row">
+      <button class="tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+      <button class="tab" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+    <div id="form-login">
+      <div class="field"><label>Email</label><input id="l-email" type="email" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="field"><label>Password</label><input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
+      <button class="modal-btn" onclick="doLogin()">Sign in</button>
+      <div class="modal-err" id="l-err"></div>
+    </div>
+    <div id="form-register" style="display:none">
+      <div class="field"><label>Username</label><input id="r-user" type="text" placeholder="yourname" autocomplete="username"/></div>
+      <div class="field"><label>Email</label><input id="r-email" type="email" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="field"><label>Password</label><input id="r-pass" type="password" placeholder="Min. 8 characters" autocomplete="new-password"/></div>
+      <button class="modal-btn" onclick="doRegister()">Create account</button>
+      <div class="modal-err" id="r-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="hero-badge-dot"></span>
+    Now supporting {len(providers)} AI providers
+  </div>
+  <h1>One API.<br/><em>Every AI Model.</em></h1>
+  <p class="hero-sub">One endpoint, every major AI provider. Switch models instantly — no lock-in, no vendor complexity.</p>
+  <div class="hero-cta">
+    <button class="btn-hero-primary" onclick="openModal('register')">Get Started Free →</button>
+    <a href="/dashboard" class="btn-hero-secondary">Documentation</a>
+  </div>
+  <div class="hero-chips">
+    <span class="chip"><span class="chip-dot"></span>Automatic retries</span>
+    <span class="chip"><span class="chip-dot"></span>One API key</span>
+    <span class="chip"><span class="chip-dot"></span>Usage analytics</span>
+    <span class="chip"><span class="chip-dot"></span>OpenAI SDK compatible</span>
+  </div>
+</section>
+
+<!-- Code widget -->
+<div style="padding:0 24px">
+<div class="code-widget">
+  <div class="code-tabs">
+    <div class="code-win-dots">
+      <div class="code-dot r"></div>
+      <div class="code-dot y"></div>
+      <div class="code-dot g"></div>
+    </div>
+    <button class="code-tab active" onclick="showCode('python',this)">Python</button>
+    <button class="code-tab" onclick="showCode('node',this)">Node.js</button>
+    <button class="code-tab" onclick="showCode('curl',this)">cURL</button>
+  </div>
+  <div class="code-body" id="code-python"><pre><span class="c"># Install: pip install openai</span>
+<span class="k">from</span> <span class="n">openai</span> <span class="k">import</span> <span class="n">OpenAI</span>
+
+<span class="n">client</span> <span class="p">=</span> <span class="f">OpenAI</span><span class="p">(</span>
+  <span class="n">base_url</span><span class="p">=</span><span class="s">"https://your-domain.replit.app/v1"</span><span class="p">,</span>
+  <span class="n">api_key</span><span class="p">=</span><span class="s">"sk-dzcx-your-api-key"</span>
+<span class="p">)</span>
+
+<span class="n">response</span> <span class="p">=</span> <span class="n">client</span><span class="p">.</span><span class="n">chat</span><span class="p">.</span><span class="n">completions</span><span class="p">.</span><span class="f">create</span><span class="p">(</span>
+  <span class="n">model</span><span class="p">=</span><span class="s">"gemini-2.0-flash"</span><span class="p">,</span>
+  <span class="n">messages</span><span class="p">=[{{"</span><span class="n">role</span><span class="p">":</span> <span class="s">"user"</span><span class="p">, "</span><span class="n">content</span><span class="p">":</span> <span class="s">"Hello!"</span><span class="p">}}]</span>
+<span class="p">)</span>
+<span class="f">print</span><span class="p">(</span><span class="n">response</span><span class="p">.</span><span class="n">choices</span><span class="p">[</span><span class="s">0</span><span class="p">].</span><span class="n">message</span><span class="p">.</span><span class="n">content</span><span class="p">)</span></pre></div>
+  <div class="code-body" id="code-node" style="display:none"><pre><span class="c">// Install: npm install openai</span>
+<span class="k">import</span> <span class="n">OpenAI</span> <span class="k">from</span> <span class="s">'openai'</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="n">client</span> <span class="p">=</span> <span class="k">new</span> <span class="f">OpenAI</span><span class="p">({{</span>
+  <span class="n">baseURL</span><span class="p">:</span> <span class="s">'https://your-domain.replit.app/v1'</span><span class="p">,</span>
+  <span class="n">apiKey</span><span class="p">:</span>  <span class="s">'sk-dzcx-your-api-key'</span><span class="p">,</span>
+<span class="p">}});</span>
+
+<span class="k">const</span> <span class="n">res</span> <span class="p">=</span> <span class="k">await</span> <span class="n">client</span><span class="p">.</span><span class="n">chat</span><span class="p">.</span><span class="n">completions</span><span class="p">.</span><span class="f">create</span><span class="p">({{</span>
+  <span class="n">model</span><span class="p">:</span> <span class="s">'gemini-2.0-flash'</span><span class="p">,</span>
+  <span class="n">messages</span><span class="p">: [{{</span> <span class="n">role</span><span class="p">:</span> <span class="s">'user'</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="s">'Hello!'</span> <span class="p">}}],</span>
+<span class="p">}});</span>
+<span class="n">console</span><span class="p">.</span><span class="f">log</span><span class="p">(</span><span class="n">res</span><span class="p">.</span><span class="n">choices</span><span class="p">[</span><span class="s">0</span><span class="p">].</span><span class="n">message</span><span class="p">.</span><span class="n">content</span><span class="p">);</span></pre></div>
+  <div class="code-body" id="code-curl" style="display:none"><pre><span class="n">curl</span> <span class="n">https://your-domain.replit.app/v1/chat/completions</span> <span class="p">\\</span>
+  <span class="n">-H</span> <span class="s">"Authorization: Bearer sk-dzcx-your-api-key"</span> <span class="p">\\</span>
+  <span class="n">-H</span> <span class="s">"Content-Type: application/json"</span> <span class="p">\\</span>
+  <span class="n">-d</span> <span class="s">'{{"model":"gemini-2.0-flash","messages":[{{"role":"user","content":"Hello!"}}]}}'</span></pre></div>
+</div>
+</div>
+
+<!-- Provider ticker -->
+<div class="ticker-wrap">
+  <div class="ticker-track">{ticker_items}</div>
+</div>
+
+<!-- Features -->
+<section class="section" id="features">
+  <div style="text-align:center;margin-bottom:0">
+    <div class="sec-label">Features</div>
+    <h2 class="sec-title">Everything you need to ship with AI</h2>
+    <p class="sec-sub" style="margin:0 auto">One API, built-in redundancy, usage tracking, and full multi-modal support.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat">
+      <div class="feat-icon">⚡</div>
+      <h3>Unified API</h3>
+      <p>One endpoint for models from HuggingFace, Groq, Cerebras, Gemini, Mistral, and more. Switch models with a single parameter.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔄</div>
+      <h3>Smart Routing</h3>
+      <p>Automatic provider selection based on request intent. Coding, reasoning, chat — each routed to the best available model.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🛡️</div>
+      <h3>Built-in Redundancy</h3>
+      <p>Automatic retries on upstream failures. Reduces failed requests without any extra code on your side.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📊</div>
+      <h3>Usage Analytics</h3>
+      <p>Track requests, response times, and provider stats. Per-key analytics so you know exactly what's running.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🖼️</div>
+      <h3>Multi-Modal</h3>
+      <p>Not just chat — image generation and text-to-speech built in. All through the same unified key.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔑</div>
+      <h3>OpenAI Compatible</h3>
+      <p>Drop-in replacement for the OpenAI SDK. Change your base URL and start building — no code rewrites.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Get started steps -->
+<section class="section" id="get-started">
+  <div style="text-align:center;margin-bottom:0">
+    <div class="sec-label">Quickstart</div>
+    <h2 class="sec-title">Get started in minutes</h2>
+    <p class="sec-sub" style="margin:0 auto">Drop-in OpenAI SDK compatibility. Change your base URL and start building.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">Step 01</div>
+      <h3>Create your account</h3>
+      <p style="color:var(--sub);font-size:13.5px;line-height:1.6">Sign up and your API key is generated instantly. No credit card required.</p>
+      <div class="step-code">DZECKAPI_KEY=<span style="color:#ffa657">"sk-dzcx-..."</span></div>
+    </div>
+    <div class="step">
+      <div class="step-num">Step 02</div>
+      <h3>Point your SDK at DzeckAPI</h3>
+      <p style="color:var(--sub);font-size:13.5px;line-height:1.6">Use your existing OpenAI client. Just change the base URL.</p>
+      <div class="step-code"><span style="color:#d2a8ff">client</span> = <span style="color:#d2a8ff">OpenAI</span>(<br/>  base_url=<span style="color:#a5d6ff">"…/v1"</span>,<br/>  api_key=DZECKAPI_KEY<br/>)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">Step 03</div>
+      <h3>Access any model</h3>
+      <p style="color:var(--sub);font-size:13.5px;line-height:1.6">Switch between providers with a single parameter. No separate SDKs.</p>
+      <div class="step-code"><span style="color:#6e7681"># Any supported model</span><br/>model=<span style="color:#a5d6ff">"deepseek-r1"</span><br/>model=<span style="color:#a5d6ff">"gemini-2.0-flash"</span><br/>model=<span style="color:#a5d6ff">"llama-3.3-70b"</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div class="cta-section">
+    <h2>Ready to build with AI?</h2>
+    <p>One API key. Every major model. Start building in under 2 minutes.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn-hero-primary" onclick="openModal('register')">Start Building Free →</button>
+      <a href="/dashboard" class="btn-hero-secondary">View Documentation</a>
+    </div>
+    <p class="cta-meta">Free to use · No credit card required · OpenAI SDK compatible</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>© 2025 DzeckAPI — AI Gateway &nbsp;·&nbsp; <a href="/dashboard">Documentation</a> &nbsp;·&nbsp; <a href="#" onclick="openModal('login');return false">Login</a></p>
+</footer>
+
+<script>
+function showCode(lang, btn) {{
+  document.querySelectorAll('.code-body').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.code-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('code-' + lang).style.display = 'block';
+  btn.classList.add('active');
+}}
+
+function openModal(tab) {{
+  document.getElementById('auth-overlay').classList.add('open');
+  switchTab(tab);
+  document.body.style.overflow = 'hidden';
+}}
+function closeModal() {{
+  document.getElementById('auth-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}}
+function overlayClick(e) {{
+  if (e.target === document.getElementById('auth-overlay')) closeModal();
+}}
+function switchTab(t) {{
+  document.getElementById('form-login').style.display = t === 'login' ? '' : 'none';
+  document.getElementById('form-register').style.display = t === 'register' ? '' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', t === 'login');
+  document.getElementById('tab-register').classList.toggle('active', t === 'register');
+  document.getElementById('modal-title').textContent = t === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('modal-sub').textContent = t === 'login' ? 'Access all AI models with your API key' : 'Get your free API key instantly';
+}}
+
+async function doLogin() {{
+  const email = document.getElementById('l-email').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  const errEl = document.getElementById('l-err');
+  errEl.style.display = 'none';
+  if (!email || !pass) {{ errEl.textContent = 'Please fill in all fields.'; errEl.style.display = 'block'; return; }}
+  try {{
+    const r = await fetch('/auth/login', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body: JSON.stringify({{email, password:pass}}) }});
+    const d = await r.json();
+    if (!r.ok) {{ errEl.textContent = d.error || 'Login failed.'; errEl.style.display = 'block'; return; }}
+    localStorage.setItem('dzeck_api_key', d.api_key);
+    localStorage.setItem('dzeck_username', d.username);
+    closeModal();
+    window.location.href = '/dashboard';
+  }} catch(e) {{ errEl.textContent = 'Network error.'; errEl.style.display = 'block'; }}
+}}
+
+async function doRegister() {{
+  const user  = document.getElementById('r-user').value.trim();
+  const email = document.getElementById('r-email').value.trim();
+  const pass  = document.getElementById('r-pass').value;
+  const errEl = document.getElementById('r-err');
+  errEl.style.display = 'none';
+  if (!user || !email || !pass) {{ errEl.textContent = 'Please fill in all fields.'; errEl.style.display = 'block'; return; }}
+  if (pass.length < 8) {{ errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }}
+  try {{
+    const r = await fetch('/auth/register', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body: JSON.stringify({{username:user, email, password:pass}}) }});
+    const d = await r.json();
+    if (!r.ok) {{ errEl.textContent = d.error || 'Registration failed.'; errEl.style.display = 'block'; return; }}
+    localStorage.setItem('dzeck_api_key', d.api_key);
+    localStorage.setItem('dzeck_username', d.username);
+    closeModal();
+    window.location.href = '/dashboard';
+  }} catch(e) {{ errEl.textContent = 'Network error.'; errEl.style.display = 'block'; }}
+}}
+
+document.addEventListener('keydown', e => {{ if (e.key === 'Escape') closeModal(); }});
+</script>
+</body>
+</html>"""
+
+
 # ── Documentation UI ──────────────────────────────────────────────────────────
 
 def build_docs_html():
@@ -2120,6 +2561,13 @@ async function execAutoAudio() {{
 
 @app.route("/", methods=["GET"])
 def index():
+    resp = make_response(build_landing_html())
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp
+
+
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
     resp = make_response(build_docs_html())
     resp.headers["Content-Type"] = "text/html; charset=utf-8"
     return resp
