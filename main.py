@@ -1477,7 +1477,7 @@ a{{color:inherit;text-decoration:none}}
 nav{{position:fixed;top:0;left:0;right:0;z-index:200;border-bottom:1px solid var(--border);background:rgba(8,8,8,.85);backdrop-filter:blur(20px);height:58px;display:flex;align-items:center;padding:0 32px}}
 .nav-inner{{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}}
 .nav-logo{{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.3px}}
-.logo-mark{{width:28px;height:28px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text);flex-shrink:0}}
+.nav-logo-svg{{flex-shrink:0;display:flex;align-items:center}}
 .nav-links{{display:flex;align-items:center;gap:6px}}
 .nav-link{{color:var(--sub);font-size:13.5px;padding:6px 12px;border-radius:7px;transition:color .15s,background .15s;font-weight:500}}
 .nav-link:hover{{color:var(--text);background:var(--surface2)}}
@@ -1600,7 +1600,27 @@ input::placeholder{{color:var(--muted)}}
 <nav>
   <div class="nav-inner">
     <a href="/" class="nav-logo">
-      <div class="logo-mark">D</div>
+      <div class="nav-logo-svg">
+        <svg width="38" height="34" viewBox="-2 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+          <defs>
+            <linearGradient id="nlg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#e8956d"/>
+              <stop offset="100%" stop-color="#c0604a"/>
+            </linearGradient>
+          </defs>
+          <path d="M3 23 a6 6 0 0 1 0-12 a3.8 3.8 0 0 1 7-1 a5 5 0 1 1 1 13Z"
+            stroke="url(#nlg)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="20" cy="12" r="3" stroke="#d97757" stroke-width="2"/>
+          <circle cx="20" cy="12" r="1.1" fill="#d97757"/>
+          <line x1="20" y1="12" x2="20" y2="6" stroke="#e8956d" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="17.8" y1="9.8" x2="13" y2="6" stroke="#d97757" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="13" cy="6" r="1.9" stroke="#d97757" stroke-width="1.6"/>
+          <line x1="22.5" y1="9.8" x2="27" y2="6" stroke="#e8956d" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="27" cy="6" r="1.9" stroke="#e8956d" stroke-width="1.6"/>
+          <line x1="22.8" y1="13.5" x2="27" y2="16.5" stroke="#d97757" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="27" cy="16.5" r="1.9" stroke="#d97757" stroke-width="1.6"/>
+        </svg>
+      </div>
       DzeckAPI
     </a>
     <div class="nav-links">
