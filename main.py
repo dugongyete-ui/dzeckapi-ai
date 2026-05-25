@@ -1482,9 +1482,6 @@ body{{background:var(--bg);color:var(--text);font-family:'Inter','Anthropic Sans
 header{{border-bottom:1px solid var(--border);padding:0 32px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(26,25,23,.92);backdrop-filter:blur(18px);z-index:100}}
 .logo{{font-size:14px;font-weight:600;letter-spacing:-.3px;color:var(--text);display:flex;align-items:center;gap:9px}}
 .logo-icon{{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
-.header-center{{display:flex;align-items:center;gap:5px}}
-.hpill{{font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:var(--surface)}}
-.hpill.live{{border-color:var(--border-hi);color:var(--sub)}}
 .header-right{{display:flex;align-items:center;gap:8px}}
 
 /* ── Auth buttons ── */
@@ -1677,11 +1674,6 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
     </div>
     <span class="logo-name">DzeckAPI</span>
   </div>
-  <div class="header-center">
-    <span class="hpill">v4</span>
-    <span class="hpill">OpenAI Compatible</span>
-    <span class="hpill green">● Live</span>
-  </div>
   <div class="header-right">
     <div id="auth-header-guest">
       <button class="auth-btn" onclick="openModal()">Sign in</button>
@@ -1700,7 +1692,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
     <div class="hero-top">
       <div>
         <h1>AI Gateway</h1>
-        <p class="hero-sub">Unified API with auto-fallback across {_n_chat_public} AI models. Drop-in replacement for OpenAI Chat Completions.</p>
+        <p class="hero-sub">Production-grade AI infrastructure with intelligent multi-provider orchestration, automatic failover, and full OpenAI API compatibility.</p>
       </div>
     </div>
     <div class="stats">
