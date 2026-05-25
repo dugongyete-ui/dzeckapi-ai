@@ -575,11 +575,12 @@ _INTENT_PREFERRED = {
         "cohere",
     ],
     "search": [
-        "perplexity",          # real-time web search
-        "gemini",
-        "hf-hyperbolic",
-        "hf-cerebras-qwen",
+        "hf-hyperbolic",       # Llama 3.3 70B — best instruction following + broad knowledge
+        "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
+        "hf-cerebras",         # GPT-OSS 120B — fast
         "groq",
+        "perplexity",          # real-time web search (setelah HF exhausted)
+        "gemini",
     ],
 }
 
@@ -651,22 +652,29 @@ def detect_intent(messages: list) -> str:
 
 def get_order_for_intent(intent: str) -> list:
     """
-    Urutan provider optimal untuk intent dengan fallback tier:
-      Tier 1 : HF token-1 preferred untuk intent
-      Tier 2 : HF token-2 preferred (langsung setelah t1 pasangannya)
-      Tier 3 : Non-HF preferred (groq, gemini, dll)
-      Tier 4 : Sisa provider dari CHAT_ORDER (hf-fast, static providers)
+    Urutan provider optimal untuk intent dengan JAMINAN HF-first:
+
+      Tier 1 : Semua HF token-1 (urutan sesuai intent preference)
+      Tier 2 : Semua HF token-2 berpasangan (langsung setelah t1 masing-masing)
+      Tier 3 : Non-HF API providers (groq, gemini, dll — jika API key tersedia)
+      Tier 4 : Static/g4f providers (perplexity, cohere, pollinations, dll)
+
+    HF token SELALU dihabiskan dulu sebelum jatuh ke provider di luar HF,
+    terlepas dari intent apapun.
 
     Contoh untuk coding:
       hf-cerebras-qwen → hf-cerebras-qwen-t2 → hf-cerebras → hf-cerebras-t2
-      → hf-hyperbolic → hf-hyperbolic-t2 → groq → cerebras → ...
+      → hf-hyperbolic → hf-hyperbolic-t2 → hf-cerebras-fast → hf-cerebras-fast-t2
+      → cohere → deepinfra → perplexity → ...
 
-    Contoh untuk search (perplexity/gemini diprioritaskan):
-      perplexity → gemini → hf-hyperbolic → hf-hyperbolic-t2
-      → hf-cerebras-qwen → hf-cerebras-qwen-t2 → groq → ...
+    Contoh untuk search:
+      hf-hyperbolic → hf-hyperbolic-t2 → hf-cerebras-qwen → hf-cerebras-qwen-t2
+      → hf-cerebras → hf-cerebras-t2 → hf-cerebras-fast → hf-cerebras-fast-t2
+      → perplexity → cohere → deepinfra → ...
     """
     preferred = _INTENT_PREFERRED.get(intent, [])
 
+    # Bangun ordered dari preferred (dengan t2 injeksi langsung setelah t1 pasangannya)
     ordered = []
     seen = set()
     for pid in preferred:
@@ -674,17 +682,21 @@ def get_order_for_intent(intent: str) -> list:
             continue
         ordered.append(pid)
         seen.add(pid)
-        # Jika ini HF t1 provider, injeksi t2-nya langsung setelahnya
-        # sebelum pindah ke provider preferred berikutnya
+        # Injeksi t2 langsung setelah t1 pasangannya
         if CHAT_PROVIDERS[pid].get("hf_provider") and not CHAT_PROVIDERS[pid].get("is_t2"):
             t2_pid = pid + "-t2"
             if t2_pid in CHAT_PROVIDERS and t2_pid not in seen:
                 ordered.append(t2_pid)
                 seen.add(t2_pid)
 
-    # Sisa dari CHAT_ORDER yang belum masuk (hf-fast, static providers, dll)
+    # Tambahkan sisa CHAT_ORDER yang belum masuk
     remaining = [p for p in CHAT_ORDER if p not in seen]
-    return ordered + remaining
+    full_order = ordered + remaining
+
+    # ── PAKSA HF-first: pisahkan HF vs non-HF, pertahankan urutan relatif ──
+    hf_first  = [p for p in full_order if CHAT_PROVIDERS.get(p, {}).get("hf_provider")]
+    non_hf    = [p for p in full_order if not CHAT_PROVIDERS.get(p, {}).get("hf_provider")]
+    return hf_first + non_hf
 
 
 IMAGE_PROVIDERS = {
