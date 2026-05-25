@@ -954,16 +954,19 @@ select option{{background:var(--surface2)}}
 code{{background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:12px;color:#a78bfa;border:1px solid var(--border)}}
 
 @media(max-width:600px){{
-  header{{padding:0 16px}}
-  .header-center{{display:none}}
+  header{{padding:0 14px;gap:8px}}
+  .header-center{{gap:4px}}
+  .hpill{{font-size:10px;padding:2px 7px}}
   .wrap{{padding:28px 14px 72px}}
-  .hero h1{{font-size:20px}}
+  .hero h1{{font-size:21px}}
   .ep-meta,.prov-desc{{display:none}}
   .prov-name{{min-width:unset}}
-  .stats{{flex-direction:column}}
-  .stat{{border-right:none;border-bottom:1px solid var(--border)}}
-  .stat:last-child{{border-bottom:none}}
+  .stats{{flex-direction:row}}
+  .stat{{padding:12px 14px}}
+  .stat-n{{font-size:18px}}
   .cred-box{{flex-wrap:wrap}}
+  .cred-val{{min-width:0;width:100%;order:3}}
+  .cred-label{{order:1}}.cred-actions{{order:2}}
 }}
 </style>
 </head>
