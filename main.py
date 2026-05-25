@@ -748,6 +748,7 @@ IMAGE_ORDER = ["pollinations"]
 AUDIO_PROVIDERS = {
     # ── Bahasa Indonesia ───────────────────────────────────────────────────────
     "edge-id-female": {
+        "model":        "edge-id-female",
         "voice":        "id-ID-GadisNeural",
         "lang":         "id-ID",
         "gender":       "female",
@@ -755,6 +756,7 @@ AUDIO_PROVIDERS = {
         "content_type": "audio/mpeg",
     },
     "edge-id-male": {
+        "model":        "edge-id-male",
         "voice":        "id-ID-ArdiNeural",
         "lang":         "id-ID",
         "gender":       "male",
@@ -763,6 +765,7 @@ AUDIO_PROVIDERS = {
     },
     # ── Bahasa Melayu ──────────────────────────────────────────────────────────
     "edge-ms-female": {
+        "model":        "edge-ms-female",
         "voice":        "ms-MY-YasminNeural",
         "lang":         "ms-MY",
         "gender":       "female",
@@ -770,6 +773,7 @@ AUDIO_PROVIDERS = {
         "content_type": "audio/mpeg",
     },
     "edge-ms-male": {
+        "model":        "edge-ms-male",
         "voice":        "ms-MY-OsmanNeural",
         "lang":         "ms-MY",
         "gender":       "male",
@@ -778,6 +782,7 @@ AUDIO_PROVIDERS = {
     },
     # ── English ────────────────────────────────────────────────────────────────
     "edge-en-female": {
+        "model":        "edge-en-female",
         "voice":        "en-US-AvaNeural",
         "lang":         "en-US",
         "gender":       "female",
@@ -785,6 +790,7 @@ AUDIO_PROVIDERS = {
         "content_type": "audio/mpeg",
     },
     "edge-en-male": {
+        "model":        "edge-en-male",
         "voice":        "en-US-AndrewNeural",
         "lang":         "en-US",
         "gender":       "male",
@@ -792,6 +798,7 @@ AUDIO_PROVIDERS = {
         "content_type": "audio/mpeg",
     },
     "edge-en-multilingual": {
+        "model":        "edge-en-multilingual",
         "voice":        "en-US-AndrewMultilingualNeural",
         "lang":         "en-US",
         "gender":       "male",
@@ -799,6 +806,7 @@ AUDIO_PROVIDERS = {
         "content_type": "audio/mpeg",
     },
     "edge-en-gb-female": {
+        "model":        "edge-en-gb-female",
         "voice":        "en-GB-LibbyNeural",
         "lang":         "en-GB",
         "gender":       "female",
@@ -1125,17 +1133,21 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
     return None, None, errors
 
 
-def run_audio_fallback(text: str, voice_override: str = None, gender: str = None):
+def run_audio_fallback(text: str, model: str = None, voice_override: str = None, gender: str = None):
     """
     Generate audio menggunakan edge-tts dengan auto-select suara terbaik.
+    - model          : provider key (misal 'edge-id-female'), prioritas tertinggi
     - voice_override : nama voice edge-tts (misal 'id-ID-GadisNeural'), override auto-detect
     - gender         : 'male' | 'female' | None
     - Kembalikan (audio_bytes, provider_key, content_type, errors)
     """
     errors = {}
 
-    # Pilih voice: override manual → auto dari teks → default
-    if voice_override:
+    # Pilih voice: model key → voice override → auto-detect dari teks → default
+    if model and model in AUDIO_PROVIDERS:
+        pk_used = model
+        target_voice = AUDIO_PROVIDERS[model]["voice"]
+    elif voice_override:
         # Cari provider_key yang matching voice, atau pakai edge-id-female sebagai fallback
         target_voice = voice_override
         pk_used = next(
@@ -1603,10 +1615,18 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
         <label>Text<span class="req">*</span></label>
         <textarea id="au-aud-text" placeholder="Enter text to convert to speech..."></textarea>
       </div>
+      <div class="field">
+        <label>Model <span class="opt">optional — leave blank for auto-detect</span></label>
+        <select id="au-aud-model" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--r-xs);padding:8px 10px;width:100%;font-size:13px;font-family:inherit">
+          <option value="">Auto-detect (bahasa dari teks)</option>
+          {''.join(f'<option value="{k}">{_public_label(k)} — {v["desc"].split(" (")[0]}</option>' for k, v in AUDIO_PROVIDERS.items())}
+        </select>
+      </div>
       <div class="form-actions">
         <button class="btn" onclick="execAutoAudio()"><span>Generate Audio</span><div class="spin" id="sp-au-aud"></div></button>
       </div>
       <div class="res-wrap" id="wr-au-aud"></div>
+      <audio id="audio-au-out" controls style="display:none;width:100%;margin-top:12px;border-radius:var(--r-xs)"></audio>
     </div>
   </div>
 
@@ -1803,8 +1823,23 @@ function execAutoImage() {{
 }}
 
 // ── /audio ──
-function execAutoAudio() {{
-  postJSON('/audio', {{text: document.getElementById('au-aud-text').value}}, 'wr-au-aud', 'sp-au-aud');
+async function execAutoAudio() {{
+  const text = document.getElementById('au-aud-text').value;
+  const model = document.getElementById('au-aud-model').value;
+  const body = {{ text }};
+  if (model) body.model = model;
+  startSpin('sp-au-aud');
+  try {{
+    const r = await fetch('/audio', {{method:'POST',headers:authHeaders(),body:JSON.stringify(body)}});
+    const d = await r.json();
+    showResult('wr-au-aud','sp-au-aud',r.status,d,{{provider:d.provider_used}});
+    if (r.ok && d.audio_base64) {{
+      const audio = document.getElementById('audio-au-out');
+      audio.src = 'data:' + d.content_type + ';base64,' + d.audio_base64;
+      audio.style.display = 'block';
+      audio.play();
+    }}
+  }} catch(e) {{ showResult('wr-au-aud','sp-au-aud',0,e.message); }}
 }}
 </script>
 </body>
@@ -2203,14 +2238,15 @@ def audio_auto():
     POST /audio
     Body JSON:
       - text        : teks yang akan diucapkan (wajib)
-      - voice       : nama voice edge-tts, misal 'id-ID-GadisNeural' (opsional)
+      - model       : provider key, misal 'edge-id-female' (opsional, prioritas utama)
+      - voice       : nama voice edge-tts, misal 'id-ID-GadisNeural' (opsional, fallback)
       - gender      : 'male' | 'female' (opsional, default auto)
       - return_type : 'base64' | 'binary' (opsional, default 'base64')
 
-    Suara auto-detect: teks Indonesia → suara Indonesia, else → English.
+    Prioritas suara: model → voice → auto-detect bahasa → default Indonesia female.
 
     Response (base64 mode):
-      { provider_used, voice, lang, gender, content_type, audio_base64, size_bytes, skipped, author }
+      { provider_used, model, voice, lang, gender, content_type, audio_base64, size_bytes, skipped, author }
 
     Response (binary mode):
       Content-Type: audio/mpeg  (langsung bytes MP3)
@@ -2221,6 +2257,7 @@ def audio_auto():
 
     audio_bytes, used, ctype, errors = run_audio_fallback(
         data["text"],
+        model=data.get("model"),
         voice_override=data.get("voice"),
         gender=data.get("gender"),
     )
@@ -2241,6 +2278,7 @@ def audio_auto():
 
     return jsonify({
         "provider_used": used,
+        "model":         used,
         "voice":         cfg["voice"],
         "lang":          cfg["lang"],
         "gender":        cfg["gender"],
