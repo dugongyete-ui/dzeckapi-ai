@@ -811,7 +811,7 @@ def build_docs_html():
 :root{{
   --bg:#1a1917;--surface:#242220;--surface2:#2c2a28;--surface3:#343230;
   --border:#3a3734;--border-hi:#4e4a46;
-  --text:#ede8e0;--sub:#a09488;--muted:#6e6560;--muted2:#4e4a46;
+  --text:#f5f5f5;--sub:#b8b0a8;--muted:#7a7570;--muted2:#55514e;
   --accent:#d97757;--accent-dim:rgba(217,119,87,.12);--accent-border:rgba(217,119,87,.3);
   --danger:#c0604a;--danger-dim:rgba(192,96,74,.1);--danger-border:rgba(192,96,74,.25);
   --mono:'JetBrains Mono','Fira Code','Menlo',monospace;
