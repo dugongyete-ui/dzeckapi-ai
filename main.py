@@ -1553,6 +1553,9 @@ header{{border-bottom:1px solid var(--border);padding:0 32px;height:54px;display
 .ep{{font-family:var(--mono);font-size:12.5px;color:var(--text);font-weight:500}}
 .badge{{margin-left:7px;font-size:10px;font-weight:500;padding:2px 8px;border-radius:99px;vertical-align:middle;border:1px solid var(--border);color:var(--muted);background:var(--surface2)}}
 .ep-meta{{color:var(--muted);font-size:11.5px;margin-left:auto;flex-shrink:0}}
+.curl-btn{{margin-left:8px;padding:3px 10px;font-size:11px;font-weight:500;background:var(--surface2);border:1px solid var(--border);color:var(--sub);border-radius:var(--r-xs);cursor:pointer;font-family:var(--mono);letter-spacing:.3px;transition:all .15s;flex-shrink:0;line-height:1.6}}
+.curl-btn:hover{{background:var(--surface3);border-color:var(--border-hi);color:var(--text)}}
+.curl-btn.copied{{border-color:var(--accent);color:var(--accent)}}
 
 /* ── Form ── */
 .url-bar{{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 13px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:9px;overflow:hidden}}
@@ -1730,6 +1733,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
       <span class="mth post">POST</span>
       <span class="ep">/v1/chat/completions<span class="badge">OpenAI Compatible</span></span>
       <span class="ep-meta">Chat · Tools · Memory</span>
+      <button class="curl-btn" onclick="event.stopPropagation();copyCurlV1(this)">curl</button>
       <span class="chevron">▾</span>
     </div>
     <div class="card-body">
@@ -1765,6 +1769,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
       <span class="mth post">POST</span>
       <span class="ep">/image</span>
       <span class="ep-meta">Image Generation</span>
+      <button class="curl-btn" onclick="event.stopPropagation();copyCurlImage(this)">curl</button>
       <span class="chevron">▾</span>
     </div>
     <div class="card-body">
@@ -1798,6 +1803,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
       <span class="mth post">POST</span>
       <span class="ep">/audio</span>
       <span class="ep-meta">Text to Speech</span>
+      <button class="curl-btn" onclick="event.stopPropagation();copyCurlAudio(this)">curl</button>
       <span class="chevron">▾</span>
     </div>
     <div class="card-body">
@@ -1953,6 +1959,61 @@ function copyBase() {{
     const b = document.getElementById('copy-base-btn');
     b.textContent = 'Copied!'; setTimeout(()=>b.textContent='Copy', 1800);
   }});
+}}
+
+// ── Copy cURL helpers ──
+function _flashCurl(btn) {{
+  btn.textContent = 'copied!'; btn.classList.add('copied');
+  setTimeout(() => {{ btn.textContent = 'curl'; btn.classList.remove('copied'); }}, 1800);
+}}
+function _curlCopy(text, btn) {{
+  navigator.clipboard.writeText(text).then(() => _flashCurl(btn));
+}}
+
+function copyCurlV1(btn) {{
+  const msg    = (document.getElementById('v1-prompt').value   || 'Hello!').replace(/'/g, "'\\''");
+  const sys    = (document.getElementById('v1-system').value   || '').replace(/'/g, "'\\''");
+  const convId = (document.getElementById('v1-conv-id').value  || '').replace(/'/g, "'\\''");
+  const key    = _apiKey || 'YOUR_API_KEY';
+  let body = {{}};
+  body.messages = [{{"role":"user","content":msg}}];
+  if (sys)    body.system = sys;
+  if (convId) body.conversation_id = convId;
+  body.stream = false;
+  const curl = `curl -X POST '${{BASE}}/v1/chat/completions' \\
+  -H 'Authorization: Bearer ${{key}}' \\
+  -H 'Content-Type: application/json' \\
+  -d '${{JSON.stringify(body).replace(/'/g, "'\\''")  }}'`;
+  _curlCopy(curl, btn);
+}}
+
+function copyCurlImage(btn) {{
+  const prompt = (document.getElementById('au-img-p').value || 'a beautiful landscape').replace(/'/g, "'\\''");
+  const model  = document.getElementById('au-img-model').value;
+  const w      = document.getElementById('au-img-w').value || 1024;
+  const h      = document.getElementById('au-img-h').value || 1024;
+  const key    = _apiKey || 'YOUR_API_KEY';
+  let body = {{prompt, width: Number(w), height: Number(h)}};
+  if (model) body.model = model;
+  const curl = `curl -X POST '${{BASE}}/image' \\
+  -H 'Authorization: Bearer ${{key}}' \\
+  -H 'Content-Type: application/json' \\
+  -d '${{JSON.stringify(body).replace(/'/g, "'\\''")  }}'`;
+  _curlCopy(curl, btn);
+}}
+
+function copyCurlAudio(btn) {{
+  const text  = (document.getElementById('au-aud-text').value || 'Hello, this is a test.').replace(/'/g, "'\\''");
+  const model = document.getElementById('au-aud-model').value;
+  const key   = _apiKey || 'YOUR_API_KEY';
+  let body = {{text}};
+  if (model) body.model = model;
+  const curl = `curl -X POST '${{BASE}}/audio' \\
+  -H 'Authorization: Bearer ${{key}}' \\
+  -H 'Content-Type: application/json' \\
+  -d '${{JSON.stringify(body).replace(/'/g, "'\\''")  }}' \\
+  --output audio.mp3`;
+  _curlCopy(curl, btn);
 }}
 
 // ── Toggle card ──
