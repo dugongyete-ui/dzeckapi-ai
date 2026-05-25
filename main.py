@@ -1796,7 +1796,7 @@ input::placeholder{{color:var(--muted)}}
       <div class="step-num">Step 03</div>
       <h3>Access any model</h3>
       <p style="color:var(--sub);font-size:13.5px;line-height:1.6">Switch between providers with a single parameter. No separate SDKs.</p>
-      <div class="step-code"><span style="color:#6e7681"># HuggingFace via Cerebras</span><br/>model=<span style="color:#a5d6ff">"qwen-3-235b-a22b-instruct-2507"</span><br/><span style="color:#6e7681"># HuggingFace via Hyperbolic</span><br/>model=<span style="color:#a5d6ff">"meta-llama/Llama-3.3-70B-Instruct"</span><br/><span style="color:#6e7681"># HuggingFace fast (fallback)</span><br/>model=<span style="color:#a5d6ff">"gpt-oss-120b"</span></div>
+      <div class="step-code"><span style="color:#6e7681"># Qwen · coding &amp; math</span><br/>model=<span style="color:#a5d6ff">"qwen-3-235b-a22b-instruct-2507"</span><br/><span style="color:#6e7681"># Llama · instruction</span><br/>model=<span style="color:#a5d6ff">"meta-llama/Llama-3.3-70B-Instruct"</span><br/><span style="color:#6e7681"># GPT-OSS · general</span><br/>model=<span style="color:#a5d6ff">"gpt-oss-120b"</span></div>
     </div>
   </div>
 </section>
