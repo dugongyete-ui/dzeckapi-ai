@@ -477,6 +477,127 @@ for _opt in _OPT_PROVIDERS:
             if _opt["tool_cap"]:
                 TOOL_CAPABLE_ORDER.append(_opt["id"])
 
+# ── Smart Routing ──────────────────────────────────────────────────────────────
+# Preferred provider order per intent. Only providers actually in CHAT_PROVIDERS
+# (i.e. their API key is set) will be used; others are skipped transparently.
+
+_INTENT_PREFERRED = {
+    "coding": [
+        "hf-cerebras-qwen",    # Qwen3 235B — best coding & math
+        "hf-cerebras",         # GPT-OSS 120B — fast, native tool calls
+        "hf-hyperbolic",       # Llama 3.3 70B — strong instruction following
+        "groq",                # Llama 3.3 70B — ultra fast
+        "cerebras",            # Llama 3.1 70B — fast
+        "together",            # Llama 3.3 70B Turbo
+        "sambanova",           # Llama 3.3 70B
+        "cohere",              # Command-A — solid coder
+        "deepinfra",           # MiniMax M2.5
+        "gemini",              # Gemini 2.0 Flash
+    ],
+    "analysis": [
+        "hf-hyperbolic",       # Llama 3.3 70B — most Claude-like, best nuance
+        "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
+        "hf-cerebras",         # GPT-OSS 120B
+        "groq",
+        "sambanova",
+        "together",
+        "cerebras",
+        "gemini",
+        "cohere",
+        "deepinfra",
+        "perplexity",          # web-augmented — good for research
+    ],
+    "math": [
+        "hf-cerebras-qwen",    # Qwen3 235B — best math
+        "hf-cerebras",         # GPT-OSS 120B
+        "hf-hyperbolic",
+        "groq",
+        "cerebras",
+        "together",
+        "sambanova",
+        "gemini",
+        "deepinfra",
+        "cohere",
+    ],
+    "search": [
+        "perplexity",          # real-time web search
+        "gemini",
+        "hf-hyperbolic",
+        "hf-cerebras-qwen",
+        "groq",
+    ],
+}
+
+# Keyword patterns per intent (checked against last user message, lowercase)
+import re as _re
+
+_INTENT_PATTERNS = {
+    "coding": _re.compile(
+        r'\b(code|kode|coding|program|script|function|fungsi|class|method|debug|error|bug|'
+        r'implement|buat fungsi|bikin fungsi|algoritma|algorithm|python|javascript|typescript|'
+        r'react|nodejs|html|css|sql|bash|shell|api|endpoint|deploy|git|npm|pip|library|'
+        r'module|package|refactor|syntax|compile|runtime|exception|stacktrace|snippet|'
+        r'loop|recursion|array|object|json|xml|regex|database|query|orm|framework)\b',
+        _re.IGNORECASE
+    ),
+    "math": _re.compile(
+        r'\b(hitung|calculate|matematika|math|rumus|formula|equation|persamaan|'
+        r'statistik|statistic|probabilitas|probability|integral|turunan|derivative|'
+        r'matriks|matrix|vektor|vector|aljabar|algebra|kalkulus|calculus|buktikan|prove|'
+        r'optimasi|optimization|regresi|regression|distribusi|distribution)\b',
+        _re.IGNORECASE
+    ),
+    "analysis": _re.compile(
+        r'\b(analisis|analyze|analysis|bandingkan|compare|evaluasi|evaluate|strategi|strategy|'
+        r'riset|research|jelaskan mendalam|explain in depth|pros dan cons|pros and cons|'
+        r'kelebihan|kekurangan|advantages|disadvantages|review|assessment|laporan|report|'
+        r'kesimpulan|conclusion|rekomendasi|recommendation|mendalam|in-depth|detailed|'
+        r'komprehensif|comprehensive|elaborasi|elaborate|breakdown|rangkum|summarize)\b',
+        _re.IGNORECASE
+    ),
+    "search": _re.compile(
+        r'\b(cari|search|berita|news|terkini|latest|update terbaru|hari ini|today|'
+        r'sekarang|current|real.?time|live data|harga saham|stock price|cuaca|weather)\b',
+        _re.IGNORECASE
+    ),
+}
+
+
+def detect_intent(messages: list) -> str:
+    """
+    Deteksi intent dari pesan user terakhir.
+    Returns: 'coding' | 'math' | 'analysis' | 'search' | 'general'
+    """
+    # Ambil teks user dari beberapa pesan terakhir (maks 3)
+    user_texts = [
+        m.get("content", "") for m in messages[-3:]
+        if m.get("role") == "user" and isinstance(m.get("content"), str)
+    ]
+    combined = " ".join(user_texts)
+    if not combined.strip():
+        return "general"
+
+    scores = {intent: 0 for intent in _INTENT_PATTERNS}
+    for intent, pattern in _INTENT_PATTERNS.items():
+        scores[intent] = len(pattern.findall(combined))
+
+    best_intent = max(scores, key=lambda k: scores[k])
+    return best_intent if scores[best_intent] > 0 else "general"
+
+
+def get_order_for_intent(intent: str) -> list:
+    """
+    Kembalikan urutan provider yang optimal untuk intent tertentu.
+    Hanya provider yang aktif (ada di CHAT_PROVIDERS) yang dimasukkan,
+    sisanya diambil dari CHAT_ORDER supaya tidak ada provider yang terlewat.
+    """
+    preferred = _INTENT_PREFERRED.get(intent, [])
+    available_preferred = [p for p in preferred if p in CHAT_PROVIDERS]
+    # Tambahkan sisa provider dari CHAT_ORDER yang belum ada di preferred
+    remaining = [p for p in CHAT_ORDER if p not in available_preferred]
+    return available_preferred + remaining
+
+
 IMAGE_PROVIDERS = {
     "pollinations": {
         "model": "sana",
@@ -659,16 +780,22 @@ def run_chat(cfg, messages: list, model_override=None):
     return resp.choices[0].message.content
 
 
-def run_chat_fallback(messages: list, model_override=None, require_tool_call: bool = False):
+def run_chat_fallback(messages: list, model_override=None, require_tool_call: bool = False, intent: str = "general"):
     """
     Coba setiap provider secara berurutan.
-    Jika require_tool_call=True, provider yang tidak menghasilkan tool_calls JSON
-    dianggap 'tidak cocok' dan otomatis pindah ke provider berikutnya.
+    - intent     : hasil detect_intent(), menentukan urutan provider optimal
+    - require_tool_call : provider tanpa tool_calls JSON dianggap gagal
     """
     errors = {}
-    # Saat require_tool_call, coba provider tool-capable dulu, baru sisanya
-    order = TOOL_CAPABLE_ORDER + [p for p in CHAT_ORDER if p not in TOOL_CAPABLE_ORDER] \
-            if require_tool_call else CHAT_ORDER
+    # Pilih urutan berdasarkan intent (smart routing)
+    base_order = get_order_for_intent(intent)
+    # Saat require_tool_call, dahulukan provider tool-capable dalam urutan intent
+    if require_tool_call:
+        tc_set = set(TOOL_CAPABLE_ORDER)
+        order = [p for p in base_order if p in tc_set] + \
+                [p for p in base_order if p not in tc_set]
+    else:
+        order = base_order
     for pk in order:
         try:
             text = run_chat(CHAT_PROVIDERS[pk], messages, model_override)
@@ -1555,8 +1682,11 @@ def v1_chat_completions():
         and tool_choice != "none"
         and (force_always or last_role not in ("tool", "assistant"))
     )
+    # Smart routing: deteksi intent dari pesan user
+    intent = detect_intent(incoming_messages)
+
     # Tidak meneruskan requested_model ke provider — tiap provider pakai model konfigurasinya sendiri
-    raw_text, provider_used, errors = run_chat_fallback(final_messages, None, require_tool_call=need_tc)
+    raw_text, provider_used, errors = run_chat_fallback(final_messages, None, require_tool_call=need_tc, intent=intent)
 
     if not raw_text:
         return jsonify({"error": "Semua provider gagal.", "details": errors}), 503
@@ -1584,6 +1714,7 @@ def v1_chat_completions():
         resp = build_completion_response(None, response_model_label, tool_calls=tool_calls)
         resp["provider_used"] = provider_used
         resp["conversation_id"] = conv_id
+        resp["intent"] = intent
         return jsonify(resp)
 
     # ── Respons teks biasa ────────────────────────────────────────────────────
@@ -1604,6 +1735,7 @@ def v1_chat_completions():
     resp = build_completion_response(raw_text, response_model_label)
     resp["provider_used"] = provider_used
     resp["conversation_id"] = conv_id
+    resp["intent"] = intent
     return jsonify(resp)
 
 
