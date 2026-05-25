@@ -1477,7 +1477,7 @@ a{{color:inherit;text-decoration:none}}
 nav{{position:fixed;top:0;left:0;right:0;z-index:200;border-bottom:1px solid var(--border);background:rgba(8,8,8,.85);backdrop-filter:blur(20px);height:58px;display:flex;align-items:center;padding:0 32px}}
 .nav-inner{{max-width:1100px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}}
 .nav-logo{{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.3px}}
-.logo-mark{{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0}}
+.logo-mark{{width:28px;height:28px;background:var(--surface3);border:1px solid var(--border-hi);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--text);flex-shrink:0}}
 .nav-links{{display:flex;align-items:center;gap:6px}}
 .nav-link{{color:var(--sub);font-size:13.5px;padding:6px 12px;border-radius:7px;transition:color .15s,background .15s;font-weight:500}}
 .nav-link:hover{{color:var(--text);background:var(--surface2)}}
@@ -1491,7 +1491,7 @@ nav{{position:fixed;top:0;left:0;right:0;z-index:200;border-bottom:1px solid var
 .hero{{padding:140px 24px 80px;text-align:center;position:relative;overflow:hidden}}
 .hero::before{{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(217,119,87,.08) 0%,transparent 70%);pointer-events:none}}
 .hero-badge{{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border-hi);border-radius:99px;padding:5px 14px 5px 10px;font-size:12.5px;color:var(--sub);margin-bottom:28px}}
-.hero-badge-dot{{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}}
+.hero-badge-dot{{width:7px;height:7px;border-radius:50%;background:var(--border-hi);flex-shrink:0}}
 .hero h1{{font-size:clamp(42px,6vw,72px);font-weight:800;letter-spacing:-2.5px;line-height:1.05;max-width:700px;margin:0 auto 22px}}
 .hero h1 em{{font-style:normal;color:var(--accent)}}
 .hero-sub{{font-size:17px;color:var(--sub);max-width:480px;margin:0 auto 40px;line-height:1.65;font-weight:400}}
@@ -1510,8 +1510,7 @@ nav{{position:fixed;top:0;left:0;right:0;z-index:200;border-bottom:1px solid var
 .code-tab{{padding:11px 14px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}}
 .code-tab.active{{color:var(--text);border-bottom-color:var(--accent)}}
 .code-win-dots{{display:flex;gap:6px;margin-right:auto;order:-1}}
-.code-dot{{width:11px;height:11px;border-radius:50%}}
-.code-dot.r{{background:#ff5f57}}.code-dot.y{{background:#febc2e}}.code-dot.g{{background:#28c840}}
+.code-dot{{width:11px;height:11px;border-radius:50%;background:var(--border-hi)}}
 .code-body{{padding:22px 24px;font-family:var(--mono);font-size:13px;line-height:1.8;color:#c9d1d9;overflow-x:auto}}
 .code-body .c{{color:#6e7681}}.code-body .k{{color:#ff7b72}}.code-body .s{{color:#a5d6ff}}
 .code-body .f{{color:#d2a8ff}}.code-body .n{{color:#ffa657}}.code-body .p{{color:#c9d1d9}}
@@ -1522,7 +1521,7 @@ pre{{white-space:pre}}
 .ticker-track{{display:flex;gap:0;animation:ticker 32s linear infinite;width:max-content}}
 .ticker-track:hover{{animation-play-state:paused}}
 .ticker-item{{display:flex;align-items:center;gap:9px;padding:0 28px;font-size:13px;color:var(--sub);font-weight:500;white-space:nowrap}}
-.ticker-dot{{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.6;flex-shrink:0}}
+.ticker-dot{{width:4px;height:4px;border-radius:50%;background:var(--border-hi);flex-shrink:0}}
 @keyframes ticker{{0%{{transform:translateX(0)}}100%{{transform:translateX(-50%)}}}}
 
 /* ── Section ── */
@@ -1535,7 +1534,8 @@ pre{{white-space:pre}}
 .features-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:52px}}
 .feat{{background:var(--surface);padding:28px 26px;transition:background .15s}}
 .feat:hover{{background:var(--surface2)}}
-.feat-icon{{width:38px;height:38px;border-radius:9px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:16px}}
+.feat-icon{{width:36px;height:36px;border-radius:9px;background:var(--surface2);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;margin-bottom:16px}}
+.feat-icon svg{{width:18px;height:18px;stroke:var(--sub);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}}
 .feat h3{{font-size:15px;font-weight:700;letter-spacing:-.3px;margin-bottom:7px}}
 .feat p{{font-size:13.5px;color:var(--sub);line-height:1.6}}
 
@@ -1721,32 +1721,32 @@ input::placeholder{{color:var(--muted)}}
   </div>
   <div class="features-grid">
     <div class="feat">
-      <div class="feat-icon">⚡</div>
+      <div class="feat-icon"><svg viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
       <h3>Unified API</h3>
       <p>One endpoint for models from HuggingFace, Groq, Cerebras, Gemini, Mistral, and more. Switch models with a single parameter.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">🔄</div>
+      <div class="feat-icon"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
       <h3>Smart Routing</h3>
       <p>Automatic provider selection based on request intent. Coding, reasoning, chat — each routed to the best available model.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">🛡️</div>
+      <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
       <h3>Built-in Redundancy</h3>
       <p>Automatic retries on upstream failures. Reduces failed requests without any extra code on your side.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">📊</div>
+      <div class="feat-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
       <h3>Usage Analytics</h3>
       <p>Track requests, response times, and provider stats. Per-key analytics so you know exactly what's running.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">🖼️</div>
+      <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
       <h3>Multi-Modal</h3>
       <p>Not just chat — image generation and text-to-speech built in. All through the same unified key.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">🔑</div>
+      <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
       <h3>OpenAI Compatible</h3>
       <p>Drop-in replacement for the OpenAI SDK. Change your base URL and start building — no code rewrites.</p>
     </div>
