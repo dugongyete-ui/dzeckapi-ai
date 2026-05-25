@@ -917,8 +917,13 @@ def parse_body(*required):
     return data, None, None
 
 
-def run_chat(cfg, messages: list, model_override=None):
-    """Jalankan chat dengan daftar messages (multi-turn)."""
+def run_chat(cfg, messages: list, model_override=None, tools=None):
+    """
+    Jalankan chat dengan daftar messages (multi-turn).
+    - tools : list OpenAI tool definitions (opsional).
+      Untuk openai_compatible → dikirim native ke API.
+      Untuk g4f providers → diinjeksi ke system message (JSON injection).
+    """
     model = model_override or cfg["model"]
     if cfg["type"] == "pollinations_http":
         r = requests.post(
@@ -930,8 +935,9 @@ def run_chat(cfg, messages: list, model_override=None):
         return r.text
     if cfg["type"] == "openai_compatible":
         payload = {"model": model, "messages": messages, "stream": False}
-        if cfg.get("native_tools"):
-            payload["tools"] = cfg["native_tools"]
+        # Kirim tools natively jika tersedia (openai_compatible providers mendukung ini)
+        if tools:
+            payload["tools"] = tools
             payload["tool_choice"] = "auto"
         api_key = cfg["api_key"]
         r = requests.post(
@@ -943,22 +949,8 @@ def run_chat(cfg, messages: list, model_override=None):
             json=payload,
             timeout=30,
         )
-        # Jika HF provider kena rate limit (429), otomatis coba HF_TOKEN_2
-        if r.status_code == 429 and cfg.get("hf_provider"):
-            hf_token_2 = os.environ.get("HF_TOKEN_2", "")
-            if hf_token_2:
-                print(f"[HF] Token 1 rate-limited, mencoba HF_TOKEN_2 untuk {cfg.get('url','')}")
-                r = requests.post(
-                    cfg["url"],
-                    headers={
-                        "Authorization": f"Bearer {hf_token_2}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                    timeout=30,
-                )
-        # Jika HF t1 provider kena rate limit (429), coba HF_TOKEN_2 langsung
-        # sebagai fast-path — hanya jika ini bukan t2 dan token-nya beda
+        # Fast-path: jika HF t1 rate-limited (429) → langsung retry dengan HF_TOKEN_2
+        # Hanya berlaku untuk t1 provider, dan hanya jika token-nya memang berbeda
         if r.status_code == 429 and cfg.get("hf_provider") and not cfg.get("is_t2"):
             hf_token_2 = os.environ.get("HF_TOKEN_2", "").strip()
             if hf_token_2 and hf_token_2 != cfg.get("api_key"):
@@ -989,7 +981,20 @@ def run_chat(cfg, messages: list, model_override=None):
                 for i, tc in enumerate(msg["tool_calls"])
             ]})
         return msg.get("content") or ""
-    kwargs = {"provider": cfg["provider"], "messages": messages}
+    # ── g4f path ──────────────────────────────────────────────────────────────
+    # Untuk g4f providers, tools diinjeksi sebagai system message JSON
+    msgs_for_g4f = messages
+    if tools:
+        tool_inject = build_tool_system_prompt(tools)
+        msgs_for_g4f = list(messages)
+        if msgs_for_g4f and msgs_for_g4f[0].get("role") == "system":
+            msgs_for_g4f[0] = {
+                "role": "system",
+                "content": msgs_for_g4f[0]["content"] + "\n\n" + tool_inject,
+            }
+        else:
+            msgs_for_g4f.insert(0, {"role": "system", "content": tool_inject})
+    kwargs = {"provider": cfg["provider"], "messages": msgs_for_g4f}
     if model:
         kwargs["model"] = model
     resp = g4f_client.chat.completions.create(**kwargs)
@@ -1006,19 +1011,22 @@ def _provider_tier(pid: str) -> str:
     return "static"
 
 
-def run_chat_fallback(messages: list, model_override=None, require_tool_call: bool = False, intent: str = "general"):
+def run_chat_fallback(messages: list, model_override=None, require_tool_call: bool = False,
+                      intent: str = "general", tools: list = None):
     """
     Coba setiap provider secara berurutan dengan tier:
-      HF token-1 → HF token-2 → non-HF (groq/gemini/dll) → static (pollinations/dll)
+      HF token-1  →  HF token-2  →  non-HF API (groq/gemini/dll)  →  static (g4f)
 
     - intent            : hasil detect_intent(), menentukan urutan provider optimal
     - require_tool_call : provider tanpa tool_calls JSON dianggap gagal
+    - tools             : list OpenAI tool definitions (dikirim native ke openai_compatible,
+                          diinjeksi via system message untuk g4f)
     """
     errors = {}
     # Pilih urutan berdasarkan intent (smart routing + t1→t2 interleaving)
     base_order = get_order_for_intent(intent)
 
-    # Saat require_tool_call, dahulukan provider tool-capable dalam urutan intent
+    # Saat require_tool_call, dahulukan provider yang tool-capable dalam urutan intent
     if require_tool_call:
         tc_set = set(TOOL_CAPABLE_ORDER)
         order = [p for p in base_order if p in tc_set] + \
@@ -1026,13 +1034,13 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
     else:
         order = base_order
 
-    print(f"[Routing] intent={intent} tool_call={require_tool_call} → mencoba {len(order)} provider")
+    print(f"[Routing] intent={intent} tool_call={require_tool_call} tools={bool(tools)} → {len(order)} provider")
 
     for pk in order:
         tier = _provider_tier(pk)
         try:
             print(f"[{tier}] mencoba {pk} ...")
-            text = run_chat(CHAT_PROVIDERS[pk], messages, model_override)
+            text = run_chat(CHAT_PROVIDERS[pk], messages, model_override, tools=tools)
             if not text or not text.strip():
                 errors[pk] = "Respons kosong"
                 print(f"[{tier}] {pk} → respons kosong, skip")
@@ -1050,13 +1058,13 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
             errors[pk] = str(e)
             print(f"[{tier}] {pk} → error: {e}")
 
-    # Semua provider dengan tool_call gagal → fallback ke respons teks biasa
+    # Semua provider tool-capable gagal → fallback teks biasa (tetap gunakan tools)
     if require_tool_call:
-        print("[Routing] Semua provider tool-capable gagal → fallback teks biasa")
+        print("[Routing] Semua provider tool-capable gagal → fallback plain text")
         for pk in order:
             tier = _provider_tier(pk)
             try:
-                text = run_chat(CHAT_PROVIDERS[pk], messages, model_override)
+                text = run_chat(CHAT_PROVIDERS[pk], messages, model_override, tools=tools)
                 if text and text.strip():
                     print(f"[{tier}] {pk} → sukses (plain text fallback) ✓")
                     return text, pk, errors
@@ -1951,15 +1959,11 @@ def v1_chat_completions():
     if conv_id:
         history = load_conversation(conv_id)
 
-    system_parts = []
-    if system_text:
-        system_parts.append(system_text)
-    if tools and tool_choice != "none":
-        system_parts.append(build_tool_system_prompt(tools, forced_tool_name=forced_tool_name))
-
+    # System message hanya untuk custom system prompt — tool definitions
+    # dikirim native ke provider (openai_compatible) atau diinjeksi per-call (g4f)
     final_messages = []
-    if system_parts:
-        final_messages.append({"role": "system", "content": "\n\n".join(system_parts)})
+    if system_text:
+        final_messages.append({"role": "system", "content": system_text})
 
     final_messages += [m for m in history if m.get("role") != "system"]
     final_messages += incoming_messages
@@ -1975,11 +1979,33 @@ def v1_chat_completions():
         and tool_choice != "none"
         and (force_always or last_role not in ("tool", "assistant"))
     )
+
+    # Tools yang akan diteruskan ke providers
+    # - openai_compatible (HF/API): dikirim sebagai parameter native `tools`
+    # - g4f (static): diinjeksi via system message di dalam run_chat
+    active_tools = tools if tools and tool_choice != "none" else None
+
+    # Jika tool_choice forced ke nama tertentu, inject instruksi ke system message
+    if forced_tool_name and active_tools:
+        force_msg = f"\n\n⚠️ KAMU WAJIB memanggil tool '{forced_tool_name}' sekarang."
+        if final_messages and final_messages[0].get("role") == "system":
+            final_messages[0] = {
+                "role": "system",
+                "content": final_messages[0]["content"] + force_msg,
+            }
+        else:
+            final_messages.insert(0, {"role": "system", "content": force_msg.strip()})
+
     # Smart routing: deteksi intent dari pesan user
     intent = detect_intent(incoming_messages)
 
     # Tidak meneruskan requested_model ke provider — tiap provider pakai model konfigurasinya sendiri
-    raw_text, provider_used, errors = run_chat_fallback(final_messages, None, require_tool_call=need_tc, intent=intent)
+    raw_text, provider_used, errors = run_chat_fallback(
+        final_messages, None,
+        require_tool_call=need_tc,
+        intent=intent,
+        tools=active_tools,
+    )
 
     if not raw_text:
         return jsonify({"error": "Semua provider gagal.", "details": errors}), 503
