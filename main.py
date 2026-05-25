@@ -532,6 +532,44 @@ for _pid in _STATIC_ORDER:
         if _pid in ("cohere", "deepinfra", "pollinations", "pollinations-direct", "aria"):
             TOOL_CAPABLE_ORDER.append(_pid)
 
+# ── Public display names (clean, user-facing) ────────────────────────────────
+# Pemetaan internal ID → nama publik yang tampil di UI dan /v1/models.
+# t2 variants disembunyikan dari tampilan — hanya dipakai secara internal.
+_PUBLIC_LABEL: dict[str, str] = {
+    # HF models
+    "hf-cerebras-qwen":  "Qwen3-235B",
+    "hf-hyperbolic":     "Llama-3.3-70B",
+    "hf-cerebras":       "GPT-OSS-120B",
+    "hf-cerebras-fast":  "Llama-3.1-8B",
+    # Static / g4f
+    "pollinations":         "Pollinations",
+    "pollinations-direct":  "Pollinations Turbo",
+    "perplexity":           "Perplexity",
+    "cohere":               "Cohere",
+    "deepinfra":            "DeepInfra",
+    "huggingspace":         "HuggingFace",
+    "aria":                 "Aria",
+    "yqcloud":              "YQCloud",
+    # Audio
+    "edge-id-female":        "Indonesia · Wanita",
+    "edge-id-male":          "Indonesia · Pria",
+    "edge-ms-female":        "Malaysia · Wanita",
+    "edge-ms-male":          "Malaysia · Pria",
+    "edge-en-female":        "English · Female",
+    "edge-en-male":          "English · Male",
+    "edge-en-multilingual":  "English · Multilingual",
+    "edge-en-gb-female":     "English UK · Female",
+}
+
+def _public_label(pid: str) -> str:
+    """Kembalikan nama publik untuk provider ID. Fallback ke pid jika tidak ada mapping."""
+    return _PUBLIC_LABEL.get(pid, pid)
+
+def _is_t2(pid: str) -> bool:
+    """Cek apakah ini provider t2 (internal only, tidak ditampilkan ke user)."""
+    return CHAT_PROVIDERS.get(pid, {}).get("is_t2", False)
+
+
 # ── Smart Routing ──────────────────────────────────────────────────────────────
 # Preferred provider order per intent. Only providers actually in CHAT_PROVIDERS
 # (i.e. their API key is set) will be used; others are skipped transparently.
@@ -1217,19 +1255,27 @@ def stream_tool_calls_response(tool_calls, provider_used, conv_id=None):
 # ── Documentation UI ──────────────────────────────────────────────────────────
 
 def build_docs_html():
-    # Provider rows for the Providers section
+    # Provider rows — hanya tampilkan t1 (sembunyikan t2 sebagai detail internal)
+    _chat_public = [(k, v) for k, v in CHAT_PROVIDERS.items() if not v.get("is_t2")]
     chat_provider_rows = "".join(
-        f'<div class="prov-row"><span class="prov-dot"></span><span class="prov-name">{k}</span><span class="prov-desc">{v.get("desc","")}</span></div>'
-        for k, v in CHAT_PROVIDERS.items()
+        f'<div class="prov-row"><span class="prov-dot"></span>'
+        f'<span class="prov-name">{_public_label(k)}</span>'
+        f'<span class="prov-desc">{v.get("desc","").split(" —")[0]}</span></div>'
+        for k, v in _chat_public
     )
     image_provider_rows = "".join(
-        f'<div class="prov-row"><span class="prov-dot"></span><span class="prov-name">{k}</span><span class="prov-desc">{v.get("desc","")}</span></div>'
+        f'<div class="prov-row"><span class="prov-dot"></span>'
+        f'<span class="prov-name">{_public_label(k)}</span>'
+        f'<span class="prov-desc">{v.get("desc","").split(" —")[0]}</span></div>'
         for k, v in IMAGE_PROVIDERS.items()
     )
     audio_provider_rows = "".join(
-        f'<div class="prov-row"><span class="prov-dot"></span><span class="prov-name">{k}</span><span class="prov-desc">{v.get("desc","")}</span></div>'
+        f'<div class="prov-row"><span class="prov-dot"></span>'
+        f'<span class="prov-name">{_public_label(k)}</span>'
+        f'<span class="prov-desc">{v.get("desc","").split(" —")[0]}</span></div>'
         for k, v in AUDIO_PROVIDERS.items()
     )
+    _n_chat_public = len(_chat_public)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1450,11 +1496,11 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
     <div class="hero-top">
       <div>
         <h1>AI Gateway</h1>
-        <p class="hero-sub">Unified API with auto-fallback across {len(CHAT_PROVIDERS)} AI models. Drop-in replacement for OpenAI Chat Completions.</p>
+        <p class="hero-sub">Unified API with auto-fallback across {_n_chat_public} AI models. Drop-in replacement for OpenAI Chat Completions.</p>
       </div>
     </div>
     <div class="stats">
-      <div class="stat"><div class="stat-n">{len(CHAT_PROVIDERS)}</div><div class="stat-l">Chat Models</div></div>
+      <div class="stat"><div class="stat-n">{_n_chat_public}</div><div class="stat-l">Chat Models</div></div>
       <div class="stat"><div class="stat-n">{len(IMAGE_PROVIDERS)}</div><div class="stat-l">Image Models</div></div>
       <div class="stat"><div class="stat-n">{len(AUDIO_PROVIDERS)}</div><div class="stat-l">Audio Models</div></div>
     </div>
