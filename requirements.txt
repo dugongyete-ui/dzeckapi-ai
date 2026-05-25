@@ -11,3 +11,9 @@ dnspython
 psycopg2-binary
 python-dotenv
 huggingface-hub
+edge-tts
+groq
+google-generativeai
+cerebras-cloud-sdk
+together
+mistralai

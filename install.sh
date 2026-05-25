@@ -33,30 +33,16 @@ fi
 PY_VER=$($PYTHON --version 2>&1)
 ok "Ditemukan: $PY_VER"
 
-if $IS_REPLIT; then
-    ok "Berjalan di Replit — menggunakan pip dengan --target .pythonlibs"
-fi
-
 # ── 2. Install packages ───────────────────────────────────────
 step "Menginstall Python packages dari requirements.txt..."
 if [ ! -f "requirements.txt" ]; then
     fail "requirements.txt tidak ditemukan!"; exit 1
 fi
 
-if $IS_REPLIT; then
-    # Di Replit NixOS, install ke direktori .pythonlibs (path yang dikenali Python)
-    PYLIB=".pythonlibs/lib/python3.11/site-packages"
-    mkdir -p "$PYLIB"
-    $PYTHON -m pip install -r requirements.txt -q \
-        --target "$PYLIB" \
-        --upgrade \
-        2>&1 | grep -v "^Requirement already" | grep -v "^$" || true
-else
-    # Di luar Replit, coba --user install
-    $PYTHON -m pip install -r requirements.txt -q --user 2>&1 || \
-    $PYTHON -m pip install -r requirements.txt -q --break-system-packages 2>&1 || \
-    { fail "Gagal install packages. Coba jalankan di virtual environment."; exit 1; }
-fi
+$PYTHON -m pip install -r requirements.txt -q \
+    --upgrade \
+    2>&1 | grep -v "^Requirement already" | grep -v "^$" || true
+
 ok "Semua packages terinstall"
 
 # ── 3. Verifikasi import packages kritis ──────────────────────
@@ -65,7 +51,7 @@ step "Verifikasi import packages..."
 check_pkg() {
     local pkg=$1
     local import_name=${2:-$1}
-    if PYTHONPATH=".pythonlibs/lib/python3.11/site-packages:$PYTHONPATH" $PYTHON -c "import $import_name" 2>/dev/null; then
+    if $PYTHON -c "import $import_name" 2>/dev/null; then
         ok "  $pkg"
     else
         warn "  $pkg GAGAL diimport"
@@ -84,35 +70,16 @@ check_pkg "redis"
 check_pkg "psycopg2-binary" "psycopg2"
 check_pkg "dnspython" "dns"
 check_pkg "python-dotenv" "dotenv"
+check_pkg "huggingface-hub" "huggingface_hub"
+check_pkg "edge-tts" "edge_tts"
+check_pkg "groq"
+check_pkg "google-generativeai" "google.generativeai"
+check_pkg "cerebras-cloud-sdk" "cerebras"
+check_pkg "together"
+check_pkg "mistralai"
 
-# ── 4. Cek file .env ──────────────────────────────────────────
-step "Mengecek file .env..."
-if [ -f ".env" ]; then
-    ok ".env ditemukan — variabel akan dimuat otomatis saat app start"
-else
-    warn ".env tidak ditemukan — buat file .env dari contoh berikut:"
-    echo ""
-    echo "  MONGODB_URI=mongodb+srv://..."
-    echo "  MONGODB_DATABASE=manus"
-    echo "  REDIS_HOST=..."
-    echo "  REDIS_PORT=6379"
-    echo "  REDIS_PASSWORD=..."
-    echo "  POSTGRES_URL=postgresql://..."
-    echo "  HF_TOKEN=hf_..."
-    echo "  HF_TOKEN_2=hf_..."
-    echo "  GROQ_API_KEY=gsk_..."
-    echo "  GEMINI_API_KEY=..."
-    echo ""
-fi
-
-# ── 5. Cek environment variables (dari .env atau shell) ───────
+# ── 4. Cek environment variables ──────────────────────────────
 step "Mengecek environment variables..."
-
-if [ -f ".env" ]; then
-    set -a
-    source .env 2>/dev/null || true
-    set +a
-fi
 
 check_env() {
     local key=$1
@@ -138,7 +105,7 @@ check_env "SAMBANOVA_API_KEY"
 check_env "TOGETHER_API_KEY"
 check_env "MISTRAL_API_KEY"
 
-# ── 6. Test koneksi database (opsional) ───────────────────────
+# ── 5. Test koneksi database (opsional) ───────────────────────
 step "Test koneksi database (opsional)..."
 
 if [ -n "$MONGODB_URI" ]; then
