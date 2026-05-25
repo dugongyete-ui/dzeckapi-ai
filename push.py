@@ -14,6 +14,7 @@ Env yang dibutuhkan:
 import os
 import sys
 import base64
+import fnmatch
 import requests
 from dotenv import load_dotenv
 
@@ -24,18 +25,60 @@ REPO       = "dugongyete-ui/dzeckapi-ai"
 BRANCH     = "main"
 COMMIT_MSG = "Update project files via push.py"
 
-# File yang akan di-push ke GitHub (tambah/hapus sesuai kebutuhan)
-FILES = [
-    "main.py",
-    "requirements.txt",
-    "install.sh",
-    "push.sh",
-    "push.py",
-    ".gitignore",
-    "env.example",
-    "scripts/post-merge.sh",
-    ".replit",
-]
+# Folder yang selalu diabaikan (tidak perlu dicantumkan di .gitignore)
+ALWAYS_IGNORE_DIRS = {
+    ".git", ".cache", ".local", ".config", ".upm",
+    ".pythonlibs", "__pycache__", "attached_assets",
+    "generated_media", "node_modules", "venv", "env", ".venv",
+    "dist", "build",
+}
+
+def load_gitignore_patterns(root):
+    """Baca .gitignore dan kembalikan list pattern."""
+    patterns = []
+    gitignore_path = os.path.join(root, ".gitignore")
+    if os.path.exists(gitignore_path):
+        with open(gitignore_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    patterns.append(line)
+    return patterns
+
+def is_ignored(path, patterns):
+    """Cek apakah path cocok dengan salah satu pattern .gitignore."""
+    for pat in patterns:
+        # Hilangkan trailing slash dari pattern direktori
+        pat_clean = pat.rstrip("/")
+        if fnmatch.fnmatch(path, pat_clean):
+            return True
+        if fnmatch.fnmatch(os.path.basename(path), pat_clean):
+            return True
+    return False
+
+def collect_files(root):
+    """Kumpulkan semua file proyek secara otomatis, ikuti aturan .gitignore."""
+    patterns = load_gitignore_patterns(root)
+    result = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Hapus folder yang diabaikan dari traversal
+        rel_dir = os.path.relpath(dirpath, root)
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in ALWAYS_IGNORE_DIRS
+            and not is_ignored(os.path.join(rel_dir, d) if rel_dir != "." else d, patterns)
+        ]
+        for fname in filenames:
+            rel_path = os.path.relpath(os.path.join(dirpath, fname), root)
+            # Lewati file binary cache dan pyc
+            if rel_path.endswith((".pyc", ".pyo", ".sqlite", ".db")):
+                continue
+            if is_ignored(rel_path, patterns) or is_ignored(fname, patterns):
+                continue
+            result.append(rel_path)
+    return sorted(result)
+
+FILES = collect_files(".")
 
 # ── Setup ──────────────────────────────────────────────────────
 token = os.environ.get("GITHUB_TOKEN")
