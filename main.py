@@ -342,42 +342,42 @@ CHAT_PROVIDERS = {
     },
 }
 
+# Fallback order: powerful → lightweight (static providers, no key needed)
+# HF/API-key providers are inserted at front (first) or appended (last) via _OPT_PROVIDERS
 CHAT_ORDER = [
-    "pollinations", "pollinations-direct", "aria", "yqcloud",
-    "cohere", "deepinfra", "huggingspace", "perplexity",
+    "cohere",             # Cohere Command-A — strong instruction following
+    "deepinfra",          # MiniMax M2.5 — large MoE
+    "huggingspace",       # Qwen2 72B — solid multilingual
+    "perplexity",         # Perplexity — web-augmented
+    "pollinations",       # GPT-OSS 20B via Pollinations
+    "pollinations-direct",
+    "aria",               # Opera Aria
+    "yqcloud",            # GPT-4 via Yqcloud (least reliable)
 ]
 
-# Provider yang terbukti mengikuti format JSON tool call dengan baik
-# (dicoba duluan saat require_tool_call=True)
-TOOL_CAPABLE_ORDER = ["aria", "cohere", "deepinfra", "pollinations", "pollinations-direct"]
+# Tool-capable providers, tried first when tool_call is required
+TOOL_CAPABLE_ORDER = ["cohere", "deepinfra", "pollinations", "pollinations-direct", "aria"]
 
-# ── Provider opsional berbasis env var (gratis, perlu daftar sekali) ──────────
-# Format: type="openai_compatible" → panggil via HTTP OpenAI-compatible endpoint
+# ── Optional providers (activated when env key is set) ────────────────────────
+# Insertion logic: priority="first" → insert(0), so LAST entry processed = position 0.
+# List is ordered so the most powerful ends up at the front of CHAT_ORDER.
 _OPT_PROVIDERS = [
+    # ── Tier 4: lightweight / speed-only (appended at end) ───────────────────
     {
-        "key_env":   "GROQ_API_KEY",
-        "id":        "groq",
-        "url":       "https://api.groq.com/openai/v1/chat/completions",
-        "model":     "llama-3.3-70b-versatile",
-        "desc":      "Groq LPU – Llama 3.3 70B (ultra cepat, gratis)",
-        "priority":  "first",   # masuk di depan antrian
-        "tool_cap":  True,
-    },
-    {
-        "key_env":   "GEMINI_API_KEY",
-        "id":        "gemini",
-        "url":       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-        "model":     "gemini-2.0-flash",
-        "desc":      "Google Gemini 2.0 Flash (1M token/hari gratis)",
-        "priority":  "first",
-        "tool_cap":  True,
+        "key_env":   "HF_TOKEN",
+        "id":        "hf-cerebras-fast",
+        "url":       "https://router.huggingface.co/cerebras/v1/chat/completions",
+        "model":     "llama3.1-8b",
+        "desc":      "Llama 3.1 8B via HF Cerebras — speed-only, simple tasks",
+        "priority":  "last",
+        "tool_cap":  False,
     },
     {
         "key_env":   "MISTRAL_API_KEY",
         "id":        "mistral",
         "url":       "https://api.mistral.ai/v1/chat/completions",
         "model":     "mistral-small-latest",
-        "desc":      "Mistral Small Latest (gratis tier)",
+        "desc":      "Mistral Small Latest — lightweight fallback",
         "priority":  "last",
         "tool_cap":  True,
     },
@@ -386,17 +386,8 @@ _OPT_PROVIDERS = [
         "id":        "together",
         "url":       "https://api.together.xyz/v1/chat/completions",
         "model":     "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        "desc":      "Together AI – Llama 3.3 70B Turbo (gratis kredit)",
+        "desc":      "Together AI — Llama 3.3 70B Turbo",
         "priority":  "last",
-        "tool_cap":  True,
-    },
-    {
-        "key_env":   "CEREBRAS_API_KEY",
-        "id":        "cerebras",
-        "url":       "https://api.cerebras.ai/v1/chat/completions",
-        "model":     "llama3.1-70b",
-        "desc":      "Cerebras – Llama 3.1 70B (ultra cepat, gratis tier)",
-        "priority":  "first",
         "tool_cap":  True,
     },
     {
@@ -404,26 +395,55 @@ _OPT_PROVIDERS = [
         "id":        "sambanova",
         "url":       "https://api.sambanova.ai/v1/chat/completions",
         "model":     "Meta-Llama-3.3-70B-Instruct",
-        "desc":      "SambaNova – Llama 3.3 70B (gratis tier)",
+        "desc":      "SambaNova — Llama 3.3 70B",
         "priority":  "last",
         "tool_cap":  True,
     },
-    # HF Token – 4 provider via HF Inference Router (bypass cloud IP block)
+    # ── Tier 3: good general (inserted front, weakest of "first" batch) ───────
+    {
+        "key_env":   "GEMINI_API_KEY",
+        "id":        "gemini",
+        "url":       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "model":     "gemini-2.0-flash",
+        "desc":      "Google Gemini 2.0 Flash — fast, 1M context",
+        "priority":  "first",
+        "tool_cap":  True,
+    },
+    {
+        "key_env":   "CEREBRAS_API_KEY",
+        "id":        "cerebras",
+        "url":       "https://api.cerebras.ai/v1/chat/completions",
+        "model":     "llama3.1-70b",
+        "desc":      "Cerebras — Llama 3.1 70B, ultra-fast inference",
+        "priority":  "first",
+        "tool_cap":  True,
+    },
+    {
+        "key_env":   "GROQ_API_KEY",
+        "id":        "groq",
+        "url":       "https://api.groq.com/openai/v1/chat/completions",
+        "model":     "llama-3.3-70b-versatile",
+        "desc":      "Groq LPU — Llama 3.3 70B, ultra-fast",
+        "priority":  "first",
+        "tool_cap":  True,
+    },
+    # ── Tier 2: powerful (inserted front, ahead of tier 3) ───────────────────
     {
         "key_env":   "HF_TOKEN",
         "id":        "hf-cerebras",
         "url":       "https://router.huggingface.co/cerebras/v1/chat/completions",
         "model":     "gpt-oss-120b",
-        "desc":      "Cerebras gpt-oss-120b via HF Router (NATIVE tool calls, ultra cepat)",
+        "desc":      "OpenAI GPT-OSS 120B (MoE) via HF Cerebras — fast, native tool calls",
         "priority":  "first",
         "tool_cap":  True,
     },
+    # ── Tier 1: most powerful (inserted last → ends up at position 0) ─────────
     {
         "key_env":   "HF_TOKEN",
-        "id":        "hf-cerebras-fast",
-        "url":       "https://router.huggingface.co/cerebras/v1/chat/completions",
-        "model":     "llama3.1-8b",
-        "desc":      "Cerebras Llama 3.1 8B via HF Router (ultra cepat, gratis)",
+        "id":        "hf-hyperbolic",
+        "url":       "https://router.huggingface.co/hyperbolic/v1/chat/completions",
+        "model":     "meta-llama/Llama-3.3-70B-Instruct",
+        "desc":      "Llama 3.3 70B via HF Hyperbolic — most Claude-like, best instruction following",
         "priority":  "first",
         "tool_cap":  True,
     },
@@ -432,17 +452,8 @@ _OPT_PROVIDERS = [
         "id":        "hf-cerebras-qwen",
         "url":       "https://router.huggingface.co/cerebras/v1/chat/completions",
         "model":     "qwen-3-235b-a22b-instruct-2507",
-        "desc":      "Cerebras Qwen3 235B via HF Router (model terbesar, gratis)",
+        "desc":      "Qwen3 235B via HF Cerebras — most powerful, best for coding & math",
         "priority":  "first",
-        "tool_cap":  True,
-    },
-    {
-        "key_env":   "HF_TOKEN",
-        "id":        "hf-hyperbolic",
-        "url":       "https://router.huggingface.co/hyperbolic/v1/chat/completions",
-        "model":     "meta-llama/Llama-3.3-70B-Instruct",
-        "desc":      "Hyperbolic Llama 3.3 70B via HF Router (gratis dengan HF_TOKEN)",
-        "priority":  "last",
         "tool_cap":  True,
     },
 ]
