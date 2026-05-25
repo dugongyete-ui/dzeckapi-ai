@@ -15,16 +15,24 @@ from huggingface_hub import InferenceClient as HFClient
 import redis
 import psycopg2
 import psycopg2.extras
-import g4f
-from g4f import Provider
-from g4f.client import Client as G4FClient
 from flask import Flask, request, jsonify, make_response, Response, stream_with_context, g
 from pymongo import MongoClient, ASCENDING
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# ── g4f — isolasi ketat, last resort ──────────────────────────────────────────
+try:
+    import g4f
+    from g4f import Provider
+    from g4f.client import Client as G4FClient
+    g4f_client = G4FClient()
+    G4F_AVAILABLE = True
+except Exception as _g4f_err:
+    print(f"[g4f] Tidak tersedia: {_g4f_err}")
+    g4f_client = None
+    G4F_AVAILABLE = False
+
 app = Flask(__name__)
-g4f_client = G4FClient()
 
 # ── MongoDB ────────────────────────────────────────────────────────────────────
 _mongo_client = None
@@ -97,11 +105,7 @@ def _extract_bearer(req) -> str | None:
     auth = req.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
         return auth[7:].strip()
-    # Fallback: query param ?api_key=...
-    if req.is_json:
-        body = req.get_json(silent=True) or {}
-        return req.args.get("api_key") or body.get("api_key")
-    return req.args.get("api_key")
+    return None
 
 AUTHOR = "dzeck"
 
@@ -111,6 +115,9 @@ def inject_author(response):
     if response.direct_passthrough:
         return response
     ct = response.content_type or ""
+    # Jangan sentuh streaming response
+    if "text/event-stream" in ct:
+        return response
     if "application/json" in ct:
         try:
             data = response.get_json(force=True, silent=True)
@@ -134,7 +141,7 @@ def require_api_key_middleware():
     # Semua endpoint lain butuh API key
     api_key = _extract_bearer(request)
     if not api_key:
-        return jsonify({"error": "API key diperlukan. Sertakan header: Authorization: Bearer sk-dzcx..."}), 401
+        return jsonify({"error": "API key diperlukan. Gunakan header: Authorization: Bearer <api_key>"}), 401
     if not api_key.startswith("sk-dzcx"):
         return jsonify({"error": "Format API key tidak valid (harus dimulai sk-dzcx...)"}), 401
     user = get_user_by_api_key(api_key)
@@ -146,25 +153,63 @@ def require_api_key_middleware():
 
 
 # ── PostgreSQL (Neon) ─────────────────────────────────────────────────────────
-_pg_conn = None
+import psycopg2.pool as _pg_pool
 
-def get_pg():
-    global _pg_conn
+# ── PostgreSQL — Thread-safe connection pool ───────────────────────────────────
+_pg_pool_instance = None
+
+def _get_pg_pool():
+    """Buat atau kembalikan ThreadedConnectionPool (lazy init)."""
+    global _pg_pool_instance
+    if _pg_pool_instance is None:
+        url = os.environ.get("POSTGRES_URL")
+        if not url:
+            return None
+        try:
+            _pg_pool_instance = _pg_pool.ThreadedConnectionPool(
+                minconn=1, maxconn=10, dsn=url
+            )
+            # Inisialisasi tabel pada koneksi pertama
+            conn = _pg_pool_instance.getconn()
+            try:
+                conn.autocommit = True
+                _init_pg_tables(conn)
+            finally:
+                _pg_pool_instance.putconn(conn)
+            print("[PostgreSQL] Connection pool siap")
+        except Exception as e:
+            print(f"[PostgreSQL] Gagal buat pool: {e}")
+            _pg_pool_instance = None
+    return _pg_pool_instance
+
+def get_pg_conn():
+    """Ambil koneksi dari pool. Kembalikan None jika pool tidak tersedia."""
+    pool = _get_pg_pool()
+    if pool is None:
+        return None
     try:
-        if _pg_conn is None or _pg_conn.closed:
-            url = os.environ.get("POSTGRES_URL")
-            if not url:
-                return None
-            _pg_conn = psycopg2.connect(url)
-            _pg_conn.autocommit = True
-            _init_pg_tables(_pg_conn)
+        conn = pool.getconn()
+        conn.autocommit = True
+        return conn
     except Exception as e:
-        print(f"[PostgreSQL] Gagal koneksi: {e}")
-        _pg_conn = None
-    return _pg_conn
+        print(f"[PostgreSQL] Gagal ambil koneksi dari pool: {e}")
+        return None
+
+def release_pg_conn(conn):
+    """Kembalikan koneksi ke pool."""
+    pool = _get_pg_pool()
+    if pool and conn:
+        try:
+            pool.putconn(conn)
+        except Exception as e:
+            print(f"[PostgreSQL] Gagal kembalikan koneksi: {e}")
+
+# Alias lama — dipertahankan agar kode yang pakai get_pg() tetap jalan
+def get_pg():
+    return get_pg_conn()
 
 def _init_pg_tables(conn):
-    """Buat tabel jika belum ada."""
+    """Buat tabel dan index jika belum ada."""
     with conn.cursor() as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS api_logs (
@@ -186,13 +231,25 @@ def _init_pg_tables(conn):
                 updated_at      TIMESTAMPTZ DEFAULT NOW()
             );
         """)
+        # Hapus duplikat conversation_id sebelum buat unique index (idempotent)
+        cur.execute("""
+            DELETE FROM conversation_stats
+            WHERE id NOT IN (
+                SELECT MAX(id) FROM conversation_stats GROUP BY conversation_id
+            );
+        """)
+        # UNIQUE index untuk UPSERT yang benar di update_conv_stats
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_conv_stats_conv_id
+            ON conversation_stats(conversation_id);
+        """)
 
 def log_api_request(endpoint: str, provider: str = None, success: bool = True, error: str = None):
     """Catat setiap request ke tabel api_logs di PostgreSQL (non-blocking)."""
+    conn = get_pg_conn()
+    if not conn:
+        return
     try:
-        conn = get_pg()
-        if not conn:
-            return
         ip = request.remote_addr if request else None
         with conn.cursor() as cur:
             cur.execute(
@@ -201,28 +258,28 @@ def log_api_request(endpoint: str, provider: str = None, success: bool = True, e
             )
     except Exception as e:
         print(f"[PostgreSQL] log_api_request gagal: {e}")
-        global _pg_conn
-        _pg_conn = None
+    finally:
+        release_pg_conn(conn)
 
 def update_conv_stats(conv_id: str, msg_count: int, provider: str):
-    """Update statistik percakapan di PostgreSQL."""
+    """Update statistik percakapan di PostgreSQL (single UPSERT, race-condition safe)."""
+    conn = get_pg_conn()
+    if not conn:
+        return
     try:
-        conn = get_pg()
-        if not conn:
-            return
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO conversation_stats (conversation_id, message_count, last_provider, updated_at)
                 VALUES (%s, %s, %s, NOW())
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (conversation_id) DO UPDATE
+                SET message_count = EXCLUDED.message_count,
+                    last_provider = EXCLUDED.last_provider,
+                    updated_at    = NOW()
             """, (conv_id, msg_count, provider))
-            cur.execute("""
-                UPDATE conversation_stats
-                SET message_count=%s, last_provider=%s, updated_at=NOW()
-                WHERE conversation_id=%s
-            """, (msg_count, provider, conv_id))
     except Exception as e:
         print(f"[PostgreSQL] update_conv_stats gagal: {e}")
+    finally:
+        release_pg_conn(conn)
 
 
 # ── Redis ──────────────────────────────────────────────────────────────────────
@@ -1061,6 +1118,8 @@ def run_chat(cfg, messages: list, model_override=None, tools=None):
             ]})
         return msg.get("content") or ""
     # ── g4f path ──────────────────────────────────────────────────────────────
+    if not G4F_AVAILABLE:
+        raise RuntimeError("g4f tidak tersedia di environment ini")
     # Untuk g4f providers, tools diinjeksi sebagai system message JSON
     msgs_for_g4f = messages
     if tools:
@@ -1254,6 +1313,11 @@ def run_image_fallback(prompt: str, model: str = None, width: int = 1024, height
 
 # ── OpenAI-compatible response builders ───────────────────────────────────────
 
+def _estimate_tokens(text: str) -> int:
+    """Estimasi kasar jumlah token (1 token ≈ 4 karakter)."""
+    return max(1, len(text) // 4)
+
+
 def build_completion_response(content, provider_used, tool_calls=None, finish_reason="stop"):
     """Buat response dalam format OpenAI Chat Completions."""
     msg = {"role": "assistant"}
@@ -1263,6 +1327,7 @@ def build_completion_response(content, provider_used, tool_calls=None, finish_re
         finish_reason = "tool_calls"
     else:
         msg["content"] = content
+    completion_tokens = _estimate_tokens(content) if content else 0
     return {
         "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
         "object": "chat.completion",
@@ -1278,9 +1343,9 @@ def build_completion_response(content, provider_used, tool_calls=None, finish_re
             }
         ],
         "usage": {
-            "prompt_tokens": -1,
-            "completion_tokens": -1,
-            "total_tokens": -1,
+            "prompt_tokens":     0,
+            "completion_tokens": completion_tokens,
+            "total_tokens":      completion_tokens,
         },
     }
 
@@ -2568,7 +2633,7 @@ def analytics():
     Statistik penggunaan API dari PostgreSQL.
     Query params: limit (default 50), endpoint, provider
     """
-    conn = get_pg()
+    conn = get_pg_conn()
     if not conn:
         return jsonify({"error": "PostgreSQL tidak terhubung"}), 503
 
@@ -2632,9 +2697,11 @@ def analytics():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        release_pg_conn(conn)
 
 
 if __name__ == "__main__":
-    # Inisialisasi koneksi database saat startup
-    get_pg()
+    # Inisialisasi pool database saat startup
+    _get_pg_pool()
     app.run(host="0.0.0.0", port=5000, debug=False)
