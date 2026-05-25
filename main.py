@@ -696,106 +696,130 @@ IMAGE_PROVIDERS = {
 IMAGE_ORDER = ["pollinations"]
 
 AUDIO_PROVIDERS = {
-    # ── Text-to-Speech ─────────────────────────────────────────────────────────
-    "hf-kokoro": {
-        "model":    "hexgrad/Kokoro-82M",
-        "type":     "tts",
-        "desc":     "Kokoro-82M — ringan & sangat natural (state-of-the-art TTS)",
-        "content_type": "audio/wav",
+    # ── Bahasa Indonesia ───────────────────────────────────────────────────────
+    "edge-id-female": {
+        "voice":        "id-ID-GadisNeural",
+        "lang":         "id-ID",
+        "gender":       "female",
+        "desc":         "Suara wanita Indonesia (Microsoft Edge TTS — Gadis)",
+        "content_type": "audio/mpeg",
     },
-    "hf-mms-id": {
-        "model":    "facebook/mms-tts-ind",
-        "type":     "tts",
-        "desc":     "Meta MMS-TTS — dukungan terbaik Bahasa Indonesia",
-        "content_type": "audio/wav",
+    "edge-id-male": {
+        "voice":        "id-ID-ArdiNeural",
+        "lang":         "id-ID",
+        "gender":       "male",
+        "desc":         "Suara pria Indonesia (Microsoft Edge TTS — Ardi)",
+        "content_type": "audio/mpeg",
     },
-    "hf-bark": {
-        "model":    "suno/bark",
-        "type":     "tts",
-        "desc":     "Bark — TTS generatif dengan ekspresi emosi & musik latar",
-        "content_type": "audio/wav",
+    # ── Bahasa Melayu ──────────────────────────────────────────────────────────
+    "edge-ms-female": {
+        "voice":        "ms-MY-YasminNeural",
+        "lang":         "ms-MY",
+        "gender":       "female",
+        "desc":         "Suara wanita Melayu (Microsoft Edge TTS — Yasmin)",
+        "content_type": "audio/mpeg",
     },
-    # ── Music Generation ───────────────────────────────────────────────────────
-    "hf-musicgen-large": {
-        "model":    "facebook/musicgen-large",
-        "type":     "music",
-        "desc":     "MusicGen Large — musik berkualitas tinggi dari teks",
-        "content_type": "audio/wav",
+    "edge-ms-male": {
+        "voice":        "ms-MY-OsmanNeural",
+        "lang":         "ms-MY",
+        "gender":       "male",
+        "desc":         "Suara pria Melayu (Microsoft Edge TTS — Osman)",
+        "content_type": "audio/mpeg",
     },
-    "hf-musicgen-small": {
-        "model":    "facebook/musicgen-small",
-        "type":     "music",
-        "desc":     "MusicGen Small — cepat, musik dari teks deskripsi",
-        "content_type": "audio/wav",
+    # ── English ────────────────────────────────────────────────────────────────
+    "edge-en-female": {
+        "voice":        "en-US-AvaNeural",
+        "lang":         "en-US",
+        "gender":       "female",
+        "desc":         "English female voice (Microsoft Edge TTS — Ava)",
+        "content_type": "audio/mpeg",
     },
-    "hf-musicgen-lofi": {
-        "model":    "voodoohop/musicgen-lofi",
-        "type":     "music",
-        "desc":     "MusicGen LoFi — khusus genre lo-fi yang tenang",
-        "content_type": "audio/wav",
+    "edge-en-male": {
+        "voice":        "en-US-AndrewNeural",
+        "lang":         "en-US",
+        "gender":       "male",
+        "desc":         "English male voice (Microsoft Edge TTS — Andrew)",
+        "content_type": "audio/mpeg",
     },
-    # ── Sound Effects ──────────────────────────────────────────────────────────
-    "hf-audiogen": {
-        "model":    "facebook/audiogen-medium",
-        "type":     "sfx",
-        "desc":     "AudioGen Medium — efek suara realistis (hujan, anjing, dll)",
-        "content_type": "audio/wav",
+    "edge-en-multilingual": {
+        "voice":        "en-US-AndrewMultilingualNeural",
+        "lang":         "en-US",
+        "gender":       "male",
+        "desc":         "Multilingual voice — bisa campur Inggris & bahasa lain",
+        "content_type": "audio/mpeg",
     },
-    "hf-audioldm2": {
-        "model":    "cvssp/audioldm2-music",
-        "type":     "sfx",
-        "desc":     "AudioLDM2 — soundscape & atmosfer suara kompleks",
-        "content_type": "audio/wav",
+    "edge-en-gb-female": {
+        "voice":        "en-GB-LibbyNeural",
+        "lang":         "en-GB",
+        "gender":       "female",
+        "desc":         "British English female (Microsoft Edge TTS — Libby)",
+        "content_type": "audio/mpeg",
     },
 }
-# Urutan default: TTS → music → sfx
+
+# Urutan default: Indonesia dulu → Melayu → Inggris
 AUDIO_ORDER = [
-    "hf-kokoro", "hf-mms-id", "hf-bark",
-    "hf-musicgen-small", "hf-musicgen-large", "hf-musicgen-lofi",
-    "hf-audiogen", "hf-audioldm2",
+    "edge-id-female", "edge-id-male",
+    "edge-ms-female", "edge-ms-male",
+    "edge-en-female", "edge-en-male",
+    "edge-en-multilingual", "edge-en-gb-female",
 ]
-# Keyword → tipe audio
-_MUSIC_KEYWORDS = re.compile(
-    r'\b(music|musik|lagu|song|beat|melody|melodi|jazz|lofi|lo.?fi|hiphop|hip.?hop|'
-    r'piano|guitar|gitar|drum|bass|ambient|soundtrack|instrumental|compose|komposisi)\b',
-    re.IGNORECASE,
-)
-_SFX_KEYWORDS = re.compile(
-    r'\b(sound effect|sfx|efek suara|noise|ambient|suara hujan|rain|thunder|petir|'
-    r'bark|meow|dog|cat|anjing|kucing|crowd|keramaian|nature|alam|explosion|ledakan|'
-    r'footstep|langkah|atmosphere|atmosfer|soundscape)\b',
+
+# Pattern deteksi bahasa teks input
+_ID_PATTERN = re.compile(
+    r'\b(aku|kamu|saya|kita|kami|dia|mereka|adalah|yang|dan|atau|juga|dengan|untuk|'
+    r'tidak|bisa|mau|akan|sudah|ada|ini|itu|dari|ke|di|pada|lagi|jangan|boleh|'
+    r'bagaimana|dimana|kapan|siapa|kenapa|karena|tapi|kalau|setelah|sebelum|'
+    r'halo|hai|sayang|cantik|indah|senang|suka|cinta|rindu|maaf|terima kasih)\b',
     re.IGNORECASE,
 )
 
 
-def _detect_audio_type(text: str) -> str:
-    """Deteksi tipe audio dari teks permintaan: 'tts' | 'music' | 'sfx'."""
-    if _MUSIC_KEYWORDS.search(text):
-        return "music"
-    if _SFX_KEYWORDS.search(text):
-        return "sfx"
-    return "tts"
+def _detect_best_voice(text: str, gender: str = None) -> str:
+    """
+    Pilih voice edge-tts terbaik berdasarkan bahasa teks.
+    gender: 'male' | 'female' | None (default female untuk Indonesia)
+    """
+    is_indonesian = bool(_ID_PATTERN.search(text))
+    if is_indonesian:
+        return "id-ID-GadisNeural" if gender != "male" else "id-ID-ArdiNeural"
+    return "en-US-AvaNeural" if gender != "male" else "en-US-AndrewNeural"
 
 
-def _hf_audio(text: str, model: str, content_type: str) -> bytes:
-    """Panggil HF InferenceClient text_to_audio(), coba token-1 lalu token-2."""
-    tokens = []
-    t1 = os.environ.get("HF_TOKEN", "").strip()
-    t2 = os.environ.get("HF_TOKEN_2", "").strip()
-    if t1:
-        tokens.append(t1)
-    if t2 and t2 != t1:
-        tokens.append(t2)
-    last_err = None
-    for tok in tokens:
-        try:
-            client = HFClient(token=tok)
-            audio_bytes = client.text_to_audio(text, model=model)
-            if audio_bytes:
-                return audio_bytes
-        except Exception as e:
-            last_err = e
-    raise last_err or RuntimeError("Tidak ada HF_TOKEN yang tersedia")
+import asyncio as _asyncio
+import io as _io
+
+
+def _edge_tts_generate(text: str, voice: str) -> bytes:
+    """
+    Hasilkan audio MP3 dari teks menggunakan Microsoft Edge TTS (edge-tts).
+    Tidak memerlukan API key — gratis dan selalu tersedia.
+    """
+    try:
+        import edge_tts
+    except ImportError:
+        raise RuntimeError("edge-tts tidak terinstal. Jalankan: pip install edge-tts")
+
+    async def _generate():
+        communicate = edge_tts.Communicate(text, voice)
+        buf = _io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                buf.write(chunk["data"])
+        return buf.getvalue()
+
+    # Jalankan coroutine — handle event loop yang sudah ada (Flask sync context)
+    try:
+        loop = _asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(_asyncio.run, _generate())
+                return future.result(timeout=30)
+        else:
+            return loop.run_until_complete(_generate())
+    except RuntimeError:
+        return _asyncio.run(_generate())
 
 
 # ── Tool calling helpers ───────────────────────────────────────────────────────
@@ -1043,31 +1067,44 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
     return None, None, errors
 
 
-def run_audio_fallback(text: str, model_override: str = None, audio_type: str = None):
+def run_audio_fallback(text: str, voice_override: str = None, gender: str = None):
     """
-    Coba provider HF audio secara berurutan.
-    - audio_type : 'tts' | 'music' | 'sfx' | None (auto-detect dari text)
+    Generate audio menggunakan edge-tts dengan auto-select suara terbaik.
+    - voice_override : nama voice edge-tts (misal 'id-ID-GadisNeural'), override auto-detect
+    - gender         : 'male' | 'female' | None
     - Kembalikan (audio_bytes, provider_key, content_type, errors)
     """
     errors = {}
-    detected = audio_type or _detect_audio_type(text)
 
-    # Susun urutan: prioritaskan provider sesuai tipe yang terdeteksi
-    preferred = [pk for pk in AUDIO_ORDER if AUDIO_PROVIDERS[pk]["type"] == detected]
-    others    = [pk for pk in AUDIO_ORDER if AUDIO_PROVIDERS[pk]["type"] != detected]
-    order = preferred + others
+    # Pilih voice: override manual → auto dari teks → default
+    if voice_override:
+        # Cari provider_key yang matching voice, atau pakai edge-id-female sebagai fallback
+        target_voice = voice_override
+        pk_used = next(
+            (k for k, v in AUDIO_PROVIDERS.items() if v["voice"] == voice_override),
+            "edge-id-female"
+        )
+    else:
+        target_voice = _detect_best_voice(text, gender)
+        pk_used = next(
+            (k for k, v in AUDIO_PROVIDERS.items() if v["voice"] == target_voice),
+            "edge-id-female"
+        )
 
-    print(f"[Audio] detected_type={detected} → mencoba {len(order)} provider")
+    print(f"[Audio] voice={target_voice} provider={pk_used}")
 
+    # Coba voice utama, lalu fallback ke provider lain jika gagal
+    order = [pk_used] + [pk for pk in AUDIO_ORDER if pk != pk_used]
     for pk in order:
         cfg = AUDIO_PROVIDERS[pk]
-        model = model_override or cfg["model"]
+        voice = target_voice if pk == pk_used else cfg["voice"]
         try:
-            print(f"[Audio] mencoba {pk} ({model}) ...")
-            audio_bytes = _hf_audio(text, model, cfg["content_type"])
-            if audio_bytes:
+            print(f"[Audio] mencoba {pk} voice={voice} ...")
+            audio_bytes = _edge_tts_generate(text, voice)
+            if audio_bytes and len(audio_bytes) > 100:
                 print(f"[Audio] {pk} → sukses ({len(audio_bytes)} bytes) ✓")
                 return audio_bytes, pk, cfg["content_type"], errors
+            errors[pk] = "Output kosong"
         except Exception as e:
             errors[pk] = str(e)
             print(f"[Audio] {pk} → error: {e}")
@@ -2081,16 +2118,18 @@ def audio_auto():
     """
     POST /audio
     Body JSON:
-      - text        : teks yang akan dikonversi (wajib)
-      - model       : override model HF (opsional)
-      - audio_type  : 'tts' | 'music' | 'sfx' (opsional, default auto-detect)
+      - text        : teks yang akan diucapkan (wajib)
+      - voice       : nama voice edge-tts, misal 'id-ID-GadisNeural' (opsional)
+      - gender      : 'male' | 'female' (opsional, default auto)
       - return_type : 'base64' | 'binary' (opsional, default 'base64')
 
+    Suara auto-detect: teks Indonesia → suara Indonesia, else → English.
+
     Response (base64 mode):
-      { provider_used, audio_type, model, content_type, audio_base64, size_bytes, skipped, author }
+      { provider_used, voice, lang, gender, content_type, audio_base64, size_bytes, skipped, author }
 
     Response (binary mode):
-      Content-Type: audio/wav  (langsung bytes)
+      Content-Type: audio/mpeg  (langsung bytes MP3)
     """
     data, err, code = parse_body("text")
     if err:
@@ -2098,8 +2137,8 @@ def audio_auto():
 
     audio_bytes, used, ctype, errors = run_audio_fallback(
         data["text"],
-        model_override=data.get("model"),
-        audio_type=data.get("audio_type"),
+        voice_override=data.get("voice"),
+        gender=data.get("gender"),
     )
 
     if not audio_bytes:
@@ -2113,13 +2152,14 @@ def audio_auto():
         resp = make_response(audio_bytes)
         resp.headers["Content-Type"] = ctype
         resp.headers["X-Provider-Used"] = used
-        resp.headers["X-Audio-Model"] = cfg["model"]
+        resp.headers["X-Voice"] = cfg["voice"]
         return resp
 
     return jsonify({
         "provider_used": used,
-        "audio_type":    cfg["type"],
-        "model":         cfg["model"],
+        "voice":         cfg["voice"],
+        "lang":          cfg["lang"],
+        "gender":        cfg["gender"],
         "content_type":  ctype,
         "audio_base64":  base64.b64encode(audio_bytes).decode(),
         "size_bytes":    len(audio_bytes),
@@ -2177,17 +2217,16 @@ def image_specific(provider_key):
 def audio_specific(provider_key):
     """
     POST /audio/<provider_key>
-    Panggil provider HF audio tertentu secara langsung.
+    Gunakan voice tertentu secara langsung.
     Body JSON:
-      - text        : teks yang akan diproses (wajib)
-      - model       : override model HF (opsional)
+      - text        : teks yang akan diucapkan (wajib)
       - return_type : 'base64' | 'binary' (opsional, default 'base64')
     """
     pk = provider_key.lower()
     if pk not in AUDIO_PROVIDERS:
         return jsonify({
             "error": f"Provider '{pk}' tidak ada.",
-            "tersedia": {k: {"model": v["model"], "type": v["type"], "desc": v["desc"]}
+            "tersedia": {k: {"voice": v["voice"], "lang": v["lang"], "gender": v["gender"], "desc": v["desc"]}
                          for k, v in AUDIO_PROVIDERS.items()},
             "author": "dzeck",
         }), 404
@@ -2195,21 +2234,22 @@ def audio_specific(provider_key):
     if err:
         return err, code
     cfg = AUDIO_PROVIDERS[pk]
-    model = data.get("model") or cfg["model"]
     try:
-        audio_bytes = _hf_audio(data["text"], model, cfg["content_type"])
+        audio_bytes = _edge_tts_generate(data["text"], cfg["voice"])
         log_api_request(f"/audio/{pk}", pk, True)
 
         if data.get("return_type") == "binary":
             resp = make_response(audio_bytes)
             resp.headers["Content-Type"] = cfg["content_type"]
             resp.headers["X-Provider-Used"] = pk
+            resp.headers["X-Voice"] = cfg["voice"]
             return resp
 
         return jsonify({
             "provider":     pk,
-            "audio_type":   cfg["type"],
-            "model":        model,
+            "voice":        cfg["voice"],
+            "lang":         cfg["lang"],
+            "gender":       cfg["gender"],
             "content_type": cfg["content_type"],
             "audio_base64": base64.b64encode(audio_bytes).decode(),
             "size_bytes":   len(audio_bytes),
