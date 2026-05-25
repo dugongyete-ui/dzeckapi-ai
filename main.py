@@ -1885,6 +1885,26 @@ async function doRegister() {{
 }}
 
 document.addEventListener('keydown', e => {{ if (e.key === 'Escape') closeModal(); }});
+
+// ── Cek sesi yang sudah ada saat halaman load ──
+(function checkExistingSession() {{
+  const savedKey  = localStorage.getItem('dzeck_api_key');
+  const savedUser = localStorage.getItem('dzeck_username');
+  if (!savedKey) return;
+  // Ganti tombol nav
+  const navCta = document.querySelector('.nav-cta');
+  if (navCta) {{
+    navCta.innerHTML = '<a href="/dashboard" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">'
+      + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>'
+      + 'Dashboard</a>';
+  }}
+  // Ganti hero CTA utama
+  const heroBtn = document.querySelector('.btn-hero-primary');
+  if (heroBtn) {{
+    heroBtn.textContent = 'Go to Dashboard';
+    heroBtn.onclick = function() {{ window.location.href = '/dashboard'; }};
+  }}
+}})();
 </script>
 </body>
 </html>"""
@@ -2307,8 +2327,8 @@ document.getElementById('base-url-val').textContent = BASE;
 document.querySelectorAll('.base-url-span').forEach(el => el.textContent = BASE);
 
 // ── Auth state ──
-let _apiKey = localStorage.getItem('api_key') || '';
-let _username = localStorage.getItem('username') || '';
+let _apiKey = localStorage.getItem('dzeck_api_key') || '';
+let _username = localStorage.getItem('dzeck_username') || '';
 
 function authHeaders() {{
   const h = {{'Content-Type': 'application/json'}};
@@ -2317,14 +2337,14 @@ function authHeaders() {{
 }}
 function setSession(k, u) {{
   _apiKey = k; _username = u;
-  localStorage.setItem('api_key', k);
-  localStorage.setItem('username', u);
+  localStorage.setItem('dzeck_api_key', k);
+  localStorage.setItem('dzeck_username', u);
   renderAuthState();
 }}
 function clearSession() {{
   _apiKey = ''; _username = '';
-  localStorage.removeItem('api_key');
-  localStorage.removeItem('username');
+  localStorage.removeItem('dzeck_api_key');
+  localStorage.removeItem('dzeck_username');
   renderAuthState();
 }}
 function renderAuthState() {{
