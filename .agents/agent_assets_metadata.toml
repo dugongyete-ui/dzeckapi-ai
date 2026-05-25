@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "8EVPezWIAXFpozyq7x0Co"
+uri = "file://dzeck-api-logo.svg"
+type = "image"
+title = "Dzeck API Logo (SVG Transparan)"
