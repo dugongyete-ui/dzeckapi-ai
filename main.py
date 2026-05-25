@@ -1649,7 +1649,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
 <header>
   <div class="logo">
     <div class="logo-icon">
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg width="34" height="30" viewBox="-2 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg" overflow="visible">
         <defs>
           <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#e8956d"/>
