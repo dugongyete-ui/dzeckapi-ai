@@ -1763,7 +1763,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
   <div class="card">
     <div class="card-head" onclick="toggle(this)">
       <span class="mth post">POST</span>
-      <span class="ep">/image<span class="badge">Auto Fallback</span></span>
+      <span class="ep">/image</span>
       <span class="ep-meta">Image Generation</span>
       <span class="chevron">▾</span>
     </div>
@@ -1796,7 +1796,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
   <div class="card">
     <div class="card-head" onclick="toggle(this)">
       <span class="mth post">POST</span>
-      <span class="ep">/audio<span class="badge">Auto Fallback</span></span>
+      <span class="ep">/audio</span>
       <span class="ep-meta">Text to Speech</span>
       <span class="chevron">▾</span>
     </div>
@@ -1824,7 +1824,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
   <div class="sec-head" style="margin-top:36px"><span class="sec-title">Providers</span><span class="sec-line"></span></div>
 
   <div class="prov-table">
-    <div class="prov-sub-head">Chat — {len(CHAT_PROVIDERS)} active · sequential fallback</div>
+    <div class="prov-sub-head">Chat — {len(CHAT_PROVIDERS)} active</div>
     {chat_provider_rows}
     <div class="prov-sub-head">Image</div>
     {image_provider_rows}
