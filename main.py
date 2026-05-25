@@ -800,153 +800,170 @@ def build_docs_html():
     )
 
     return f"""<!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AI API</title>
+<title>DzeckAPI — AI Gateway</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
 :root{{
-  --bg:#0e0e0e;--surface:#171717;--surface2:#202020;
-  --border:#2a2a2a;--border-hover:#3a3a3a;
-  --text:#ede8e0;--muted:#6b6b6b;--muted2:#4a4a4a;
-  --accent:#d4a574;--accent-dim:rgba(212,165,116,.1);--accent-border:rgba(212,165,116,.25);
-  --green:#4ade80;--red:#f87171;
-  --mono:'JetBrains Mono','Fira Code',monospace;
-  --r:12px;--r-sm:8px;
+  --bg:#09090b;--surface:#111113;--surface2:#18181b;--surface3:#27272a;
+  --border:#2a2a2e;--border-hi:#3f3f46;
+  --text:#fafafa;--sub:#a1a1aa;--muted:#71717a;--muted2:#52525b;
+  --accent:#e4e4e7;--accent-c:#8b5cf6;
+  --green:#22c55e;--red:#ef4444;--blue:#3b82f6;
+  --mono:'JetBrains Mono','Fira Code','Menlo',monospace;
+  --r:10px;--r-sm:7px;--r-xs:5px;
 }}
-body{{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}}
-/* scrollbar */
-::-webkit-scrollbar{{width:4px}}::-webkit-scrollbar-thumb{{background:var(--border);border-radius:4px}}
+body{{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}}
+::-webkit-scrollbar{{width:3px;height:3px}}
+::-webkit-scrollbar-track{{background:transparent}}
+::-webkit-scrollbar-thumb{{background:var(--border-hi);border-radius:4px}}
 
 /* ── Header ── */
-header{{border-bottom:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(14,14,14,.92);backdrop-filter:blur(12px);z-index:100}}
-.logo{{font-size:15px;font-weight:700;letter-spacing:-.3px;color:var(--text)}}
-.logo em{{color:var(--accent);font-style:normal}}
-.header-right{{display:flex;align-items:center;gap:10px}}
-.version-pill{{background:var(--surface);border:1px solid var(--border);padding:3px 10px;border-radius:99px;font-size:11px;color:var(--muted);letter-spacing:.3px}}
+header{{border-bottom:1px solid var(--border);padding:0 32px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(9,9,11,.88);backdrop-filter:blur(16px);z-index:100}}
+.logo{{font-size:14px;font-weight:700;letter-spacing:-.4px;color:var(--text);display:flex;align-items:center;gap:8px}}
+.logo-icon{{width:22px;height:22px;background:var(--accent-c);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}}
+.logo-name{{letter-spacing:-.3px}}
+.header-center{{display:flex;align-items:center;gap:6px}}
+.hpill{{font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px;border:1px solid var(--border);color:var(--muted);letter-spacing:.1px;background:var(--surface2)}}
+.hpill.green{{border-color:rgba(34,197,94,.25);color:var(--green);background:rgba(34,197,94,.06)}}
+.header-right{{display:flex;align-items:center;gap:8px}}
 
-/* ── Auth ── */
-.auth-btn{{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:border-color .15s,background .15s;font-family:inherit}}
-.auth-btn:hover{{border-color:var(--accent);background:var(--surface)}}
+/* ── Auth buttons ── */
+.auth-btn{{background:var(--surface2);border:1px solid var(--border-hi);color:var(--text);padding:6px 14px;border-radius:var(--r-sm);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit;letter-spacing:-.1px}}
+.auth-btn:hover{{background:var(--surface3);border-color:var(--muted2)}}
 .auth-user{{display:flex;align-items:center;gap:8px}}
-.auth-uname{{font-size:13px;font-weight:500;color:var(--accent)}}
-.auth-logout{{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}}
-.auth-logout:hover{{color:var(--red);border-color:var(--red)}}
+.auth-avatar{{width:26px;height:26px;border-radius:99px;background:var(--accent-c);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}}
+.auth-uname{{font-size:13px;font-weight:500;color:var(--text)}}
+.auth-logout{{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}}
+.auth-logout:hover{{color:var(--red);border-color:rgba(239,68,68,.4)}}
 
 /* ── Auth Modal ── */
-.overlay{{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}}
+.overlay{{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center}}
 .overlay.open{{display:flex}}
-.modal{{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:400px;margin:16px;padding:28px 28px 24px;position:relative}}
-.modal-close{{position:absolute;top:16px;right:18px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;font-family:inherit}}
-.modal-close:hover{{color:var(--text)}}
-.modal h2{{font-size:17px;font-weight:700;margin-bottom:4px;letter-spacing:-.3px}}
-.modal .sub{{color:var(--muted);font-size:13px;margin-bottom:22px}}
-.tab-row{{display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border-radius:var(--r-sm);padding:4px}}
-.tab{{flex:1;padding:6px;border-radius:6px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}}
-.tab.active{{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3)}}
-.modal .btn{{width:100%;justify-content:center;margin-top:6px}}
-.modal-err{{color:var(--red);font-size:12.5px;margin-top:10px;display:none}}
+.modal{{background:var(--surface);border:1px solid var(--border-hi);border-radius:14px;width:100%;max-width:380px;margin:16px;padding:26px 24px 22px;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.5)}}
+.modal-close{{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;font-family:inherit;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .15s}}
+.modal-close:hover{{background:var(--surface2);color:var(--text)}}
+.modal h2{{font-size:16px;font-weight:700;margin-bottom:3px;letter-spacing:-.4px}}
+.modal .sub{{color:var(--muted);font-size:12.5px;margin-bottom:20px}}
+.tab-row{{display:flex;gap:3px;margin-bottom:18px;background:var(--surface2);border-radius:var(--r-sm);padding:3px;border:1px solid var(--border)}}
+.tab{{flex:1;padding:5px;border-radius:5px;border:none;background:none;color:var(--muted);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}}
+.tab.active{{background:var(--surface3);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4)}}
+.modal .btn{{width:100%;justify-content:center;margin-top:4px}}
+.modal-err{{color:var(--red);font-size:12px;margin-top:8px;display:none;padding:8px 10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:var(--r-xs)}}
 
-/* ── Wrap ── */
-.wrap{{max-width:820px;margin:0 auto;padding:48px 24px 100px}}
+/* ── Layout ── */
+.wrap{{max-width:780px;margin:0 auto;padding:44px 24px 96px}}
 
 /* ── Hero ── */
-.hero{{margin-bottom:40px}}
-.hero h1{{font-size:28px;font-weight:700;letter-spacing:-.6px;margin-bottom:8px;line-height:1.2}}
-.hero p{{color:var(--muted);font-size:14px;max-width:480px;line-height:1.65}}
-.stats{{display:flex;gap:32px;margin-top:24px;flex-wrap:wrap}}
-.stat{{display:flex;flex-direction:column;gap:2px}}
-.stat-n{{font-size:22px;font-weight:700;color:var(--accent);letter-spacing:-.5px}}
-.stat-l{{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}}
+.hero{{margin-bottom:36px;padding-bottom:32px;border-bottom:1px solid var(--border)}}
+.hero-top{{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}}
+.hero h1{{font-size:24px;font-weight:700;letter-spacing:-.6px;line-height:1.2;color:var(--text)}}
+.hero-sub{{color:var(--sub);font-size:13px;margin-top:6px;max-width:420px;line-height:1.6}}
+.stats{{display:flex;gap:0;margin-top:24px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}}
+.stat{{flex:1;padding:14px 18px;border-right:1px solid var(--border);background:var(--surface)}}
+.stat:last-child{{border-right:none}}
+.stat-n{{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.5px;line-height:1}}
+.stat-l{{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}}
 
-/* ── Base URL ── */
-.baseurl-box{{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}}
-.baseurl-label{{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);white-space:nowrap}}
-.baseurl-val{{font-family:var(--mono);font-size:12.5px;color:var(--accent);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-.copy-btn{{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11.5px;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:all .15s;font-family:inherit}}
-.copy-btn:hover{{color:var(--text);border-color:var(--border-hover)}}
+/* ── Credential boxes ── */
+.cred-grid{{display:flex;flex-direction:column;gap:8px;margin-bottom:28px}}
+.cred-box{{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:10px}}
+.cred-box.key-box{{border-color:rgba(139,92,246,.25);background:rgba(139,92,246,.04)}}
+.cred-label{{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);white-space:nowrap;min-width:60px}}
+.cred-label.purple{{color:rgba(167,139,250,1)}}
+.cred-val{{font-family:var(--mono);font-size:12px;color:var(--sub);background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 10px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.cred-actions{{display:flex;gap:5px;flex-shrink:0}}
+.cred-actions button,.copy-btn{{background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:all .15s;font-family:inherit;font-weight:500}}
+.cred-actions button:hover,.copy-btn:hover{{color:var(--text);border-color:var(--border-hi)}}
 
-/* ── Lock / API Key ── */
-.lock-notice{{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:var(--r);padding:13px 16px;margin-bottom:20px;font-size:13px;color:#fca5a5;display:none;align-items:center;gap:10px;flex-wrap:wrap}}
+/* ── Lock notice ── */
+.lock-notice{{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);border-radius:var(--r);padding:11px 14px;margin-bottom:20px;font-size:12.5px;color:#fca5a5;display:none;align-items:center;gap:10px;flex-wrap:wrap}}
 .lock-notice.show{{display:flex}}
-.apikey-bar{{background:var(--surface);border:1px solid var(--accent-border);border-radius:var(--r);padding:13px 18px;margin-bottom:24px;display:none;align-items:center;gap:10px;flex-wrap:wrap}}
-.apikey-bar.show{{display:flex}}
-.apikey-label{{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent);white-space:nowrap}}
-.apikey-val{{font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-.apikey-actions{{display:flex;gap:6px}}
-.apikey-actions button{{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11.5px;padding:5px 10px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s}}
-.apikey-actions button:hover{{color:var(--text)}}
+.lock-notice span{{flex:1}}
 
-/* ── Section title ── */
-.sec-title{{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:40px 0 14px}}
-hr{{border:none;border-top:1px solid var(--border);margin:36px 0}}
+/* ── Section heading ── */
+.sec-head{{display:flex;align-items:center;gap:10px;margin:32px 0 12px}}
+.sec-title{{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}}
+.sec-line{{flex:1;height:1px;background:var(--border)}}
 
-/* ── Cards ── */
-.card{{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:8px;transition:border-color .2s}}
-.card:has(.card-body.open){{border-color:var(--accent-border)}}
-.card-head{{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none;transition:background .12s}}
-.card-head:hover{{background:rgba(255,255,255,.02)}}
-.card-body{{border-top:1px solid var(--border);padding:20px 18px;display:none}}
+/* ── Endpoint cards ── */
+.card{{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:6px;transition:border-color .2s}}
+.card:has(.card-body.open){{border-color:rgba(139,92,246,.3)}}
+.card-head{{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none;transition:background .12s}}
+.card-head:hover{{background:rgba(255,255,255,.015)}}
+.chevron{{margin-left:auto;color:var(--muted);font-size:12px;transition:transform .2s;flex-shrink:0}}
+.card:has(.card-body.open) .chevron{{transform:rotate(180deg)}}
+.card-body{{border-top:1px solid var(--border);padding:18px 16px;display:none;background:var(--bg)}}
 .card-body.open{{display:block}}
-.mth{{font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 9px;border-radius:5px;min-width:44px;text-align:center}}
-.mth.get{{background:rgba(96,165,250,.1);color:#93c5fd;border:1px solid rgba(96,165,250,.2)}}
-.mth.post{{background:rgba(74,222,128,.1);color:#86efac;border:1px solid rgba(74,222,128,.2)}}
-.ep{{font-family:var(--mono);font-size:12.5px;color:var(--text)}}
-.tag{{margin-left:6px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;vertical-align:middle}}
-.tag-compat{{background:rgba(212,165,116,.1);border:1px solid rgba(212,165,116,.25);color:var(--accent)}}
-.tag-auto{{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);color:#86efac}}
-.sum{{color:var(--muted);font-size:12px;margin-left:auto}}
+
+.mth{{font-size:10px;font-weight:700;letter-spacing:.4px;padding:3px 8px;border-radius:4px;min-width:42px;text-align:center;flex-shrink:0}}
+.mth.post{{background:rgba(34,197,94,.08);color:#4ade80;border:1px solid rgba(34,197,94,.18)}}
+.mth.get{{background:rgba(59,130,246,.08);color:#60a5fa;border:1px solid rgba(59,130,246,.18)}}
+.ep{{font-family:var(--mono);font-size:12.5px;color:var(--text);font-weight:500}}
+.badge{{margin-left:7px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;vertical-align:middle;letter-spacing:.1px}}
+.badge-oa{{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);color:#a78bfa}}
+.badge-af{{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);color:#4ade80}}
+.ep-meta{{color:var(--muted);font-size:11.5px;margin-left:auto;flex-shrink:0}}
 
 /* ── Form ── */
-.url-preview{{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 13px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:16px;word-break:break-all}}
-.url-preview strong{{color:var(--accent)}}
-.card-desc{{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:16px}}
-.field{{margin-bottom:13px}}
-label{{display:block;font-size:11.5px;color:var(--muted);margin-bottom:5px;font-weight:500}}
-label .req{{color:var(--red)}}
-label .opt{{color:var(--muted2);font-weight:400}}
-input,select,textarea{{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;color:var(--text);font-family:inherit;font-size:13.5px;outline:none;transition:border-color .15s}}
-input:focus,select:focus,textarea:focus{{border-color:var(--accent-border)}}
-textarea{{resize:vertical;min-height:72px}}
+.url-bar{{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:18px;word-break:break-all;display:flex;align-items:center;gap:8px}}
+.url-bar .mth{{font-size:9px;padding:2px 7px}}
+.url-bar .url-text{{color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.field{{margin-bottom:12px}}
+label{{display:block;font-size:11.5px;color:var(--muted);margin-bottom:5px;font-weight:500;letter-spacing:-.1px}}
+label .req{{color:var(--red);margin-left:2px}}
+label .opt{{color:var(--muted2);font-weight:400;font-size:11px}}
+input,select,textarea{{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 11px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s}}
+input:focus,select:focus,textarea:focus{{border-color:rgba(139,92,246,.5);box-shadow:0 0 0 3px rgba(139,92,246,.08)}}
+textarea{{resize:vertical;min-height:70px;line-height:1.5}}
 select option{{background:var(--surface2)}}
-.row{{display:flex;gap:10px}}.row .field{{flex:1}}
-.btn{{background:var(--accent);color:#0e0e0e;border:none;padding:9px 20px;border-radius:var(--r-sm);font-size:13.5px;font-weight:600;cursor:pointer;transition:opacity .15s;display:inline-flex;align-items:center;gap:8px;font-family:inherit}}
-.btn:hover{{opacity:.88}}.btn:disabled{{opacity:.35;cursor:not-allowed}}
+.row{{display:flex;gap:8px}}.row .field{{flex:1}}
+.form-actions{{display:flex;align-items:center;gap:10px;margin-top:4px}}
+.btn{{background:var(--accent-c);color:#fff;border:none;padding:8px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;display:inline-flex;align-items:center;gap:7px;font-family:inherit;letter-spacing:-.1px}}
+.btn:hover{{opacity:.9}}.btn:active{{transform:scale(.98)}}.btn:disabled{{opacity:.35;cursor:not-allowed}}
 @keyframes spin{{to{{transform:rotate(360deg)}}}}
-.spin{{width:13px;height:13px;border:2px solid rgba(14,14,14,.25);border-top-color:#0e0e0e;border-radius:50%;animation:spin .6s linear infinite;display:none}}
+.spin{{width:12px;height:12px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;display:none;flex-shrink:0}}
 
 /* ── Response ── */
 .res-wrap{{margin-top:14px}}
-.res-header{{display:flex;align-items:center;gap:8px;margin-bottom:8px}}
+.res-header{{display:flex;align-items:center;gap:8px;margin-bottom:7px}}
 .res-label{{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}}
 .status-pill{{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600}}
-.ok{{background:rgba(74,222,128,.1);color:var(--green);border:1px solid rgba(74,222,128,.2)}}
-.err{{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2)}}
-.provider-used{{font-size:11px;color:#86efac;margin-bottom:3px}}
-.res-box{{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;color:var(--text);display:none;line-height:1.55}}
+.ok{{background:rgba(34,197,94,.08);color:var(--green);border:1px solid rgba(34,197,94,.2)}}
+.err{{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.2)}}
+.res-meta{{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px;margin-bottom:8px}}
+.res-meta span{{font-family:var(--mono)}}
+.res-box{{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;color:var(--sub);display:none;line-height:1.55}}
 .res-box.v{{display:block}}
-.img-out{{margin-top:14px;max-width:100%;border-radius:var(--r-sm);border:1px solid var(--border);display:none}}
+.img-out{{margin-top:12px;max-width:100%;border-radius:var(--r-sm);border:1px solid var(--border);display:none}}
 
-/* ── Providers list ── */
-.prov-table{{display:flex;flex-direction:column;gap:1px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}}
-.prov-row{{display:flex;align-items:center;gap:12px;padding:11px 16px;background:var(--surface);transition:background .12s}}
+/* ── Providers ── */
+.prov-table{{display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}}
+.prov-row{{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);transition:background .1s}}
+.prov-row:last-child{{border-bottom:none}}
 .prov-row:hover{{background:var(--surface2)}}
-.prov-dot{{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}}
-.prov-name{{font-family:var(--mono);font-size:12px;color:var(--accent);min-width:160px;flex-shrink:0}}
-.prov-desc{{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
-.prov-section-label{{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:20px}}
-.prov-section-label:first-child{{margin-top:0}}
-code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--accent)}}
+.prov-dot{{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0}}
+.prov-name{{font-family:var(--mono);font-size:11.5px;color:var(--sub);min-width:150px;flex-shrink:0}}
+.prov-desc{{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.prov-sub-head{{font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted2);padding:10px 14px 6px;background:var(--bg)}}
+
+code{{background:var(--surface2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:12px;color:#a78bfa;border:1px solid var(--border)}}
 
 @media(max-width:600px){{
-  header{{padding:14px 18px}}
-  .wrap{{padding:32px 16px 80px}}
-  .hero h1{{font-size:22px}}
-  .sum,.prov-desc{{display:none}}
+  header{{padding:0 16px}}
+  .header-center{{display:none}}
+  .wrap{{padding:28px 14px 72px}}
+  .hero h1{{font-size:20px}}
+  .ep-meta,.prov-desc{{display:none}}
   .prov-name{{min-width:unset}}
+  .stats{{flex-direction:column}}
+  .stat{{border-right:none;border-bottom:1px solid var(--border)}}
+  .stat:last-child{{border-bottom:none}}
+  .cred-box{{flex-wrap:wrap}}
 }}
 </style>
 </head>
@@ -956,37 +973,45 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
 <div class="overlay" id="auth-overlay" onclick="overlayClick(event)">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">✕</button>
-    <h2 id="modal-title">Masuk</h2>
-    <p class="sub" id="modal-sub">Gunakan API key Anda untuk mengakses semua endpoint</p>
+    <h2 id="modal-title">Sign in</h2>
+    <p class="sub" id="modal-sub">Access all endpoints with your API key</p>
     <div class="tab-row">
       <button class="tab active" id="tab-login" onclick="switchTab('login')">Login</button>
-      <button class="tab" id="tab-register" onclick="switchTab('register')">Daftar</button>
+      <button class="tab" id="tab-register" onclick="switchTab('register')">Register</button>
     </div>
     <div id="form-login">
-      <div class="field"><label>Email / Username</label><input id="m-email" placeholder="email@domain.com" autocomplete="email"/></div>
+      <div class="field"><label>Email or username</label><input id="m-email" placeholder="you@example.com" autocomplete="email"/></div>
       <div class="field"><label>Password</label><input id="m-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
-      <button class="btn" onclick="doLogin()"><span>Masuk</span><div class="spin" id="sp-login"></div></button>
+      <button class="btn" onclick="doLogin()"><span>Sign in</span><div class="spin" id="sp-login"></div></button>
     </div>
     <div id="form-register" style="display:none">
       <div class="field"><label>Username</label><input id="m-uname" placeholder="username" autocomplete="username"/></div>
-      <div class="field"><label>Email</label><input id="m-remail" placeholder="email@domain.com" autocomplete="email"/></div>
-      <div class="field"><label>Password <span style="color:var(--muted2);font-size:11px">(min. 6 karakter)</span></label><input id="m-rpass" type="password" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/></div>
-      <button class="btn" onclick="doRegister()"><span>Buat Akun</span><div class="spin" id="sp-reg"></div></button>
+      <div class="field"><label>Email</label><input id="m-remail" placeholder="you@example.com" autocomplete="email"/></div>
+      <div class="field"><label>Password <span style="color:var(--muted2);font-size:11px">— min. 6 chars</span></label><input id="m-rpass" type="password" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()"/></div>
+      <button class="btn" onclick="doRegister()"><span>Create account</span><div class="spin" id="sp-reg"></div></button>
     </div>
     <div class="modal-err" id="modal-err"></div>
   </div>
 </div>
 
 <header>
-  <div class="logo">multi<em>ai</em></div>
+  <div class="logo">
+    <div class="logo-icon">D</div>
+    <span class="logo-name">DzeckAPI</span>
+  </div>
+  <div class="header-center">
+    <span class="hpill">v4</span>
+    <span class="hpill">OpenAI Compatible</span>
+    <span class="hpill green">● Live</span>
+  </div>
   <div class="header-right">
-    <span class="version-pill">v4 · OpenAI Compatible</span>
     <div id="auth-header-guest">
-      <button class="auth-btn" onclick="openModal()">Login / Daftar</button>
+      <button class="auth-btn" onclick="openModal()">Sign in</button>
     </div>
     <div class="auth-user" id="auth-header-user" style="display:none">
+      <div class="auth-avatar" id="auth-avatar-letter">U</div>
       <span class="auth-uname" id="auth-uname-label"></span>
-      <button class="auth-logout" onclick="doLogout()">Logout</button>
+      <button class="auth-logout" onclick="doLogout()">Sign out</button>
     </div>
   </div>
 </header>
@@ -994,65 +1019,72 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
 <div class="wrap">
 
   <div class="hero">
-    <h1>AI API</h1>
-    <p>Unified API dengan auto-fallback ke {len(CHAT_PROVIDERS)} model AI. Format kompatibel dengan OpenAI Chat Completions.</p>
+    <div class="hero-top">
+      <div>
+        <h1>AI Gateway</h1>
+        <p class="hero-sub">Unified API with auto-fallback across {len(CHAT_PROVIDERS)} AI models. Drop-in replacement for OpenAI Chat Completions.</p>
+      </div>
+    </div>
     <div class="stats">
-      <div class="stat"><div class="stat-n">{len(CHAT_PROVIDERS)}</div><div class="stat-l">Chat</div></div>
-      <div class="stat"><div class="stat-n">{len(IMAGE_PROVIDERS)}</div><div class="stat-l">Image</div></div>
-      <div class="stat"><div class="stat-n">{len(AUDIO_PROVIDERS)}</div><div class="stat-l">Audio</div></div>
+      <div class="stat"><div class="stat-n">{len(CHAT_PROVIDERS)}</div><div class="stat-l">Chat Models</div></div>
+      <div class="stat"><div class="stat-n">{len(IMAGE_PROVIDERS)}</div><div class="stat-l">Image Models</div></div>
+      <div class="stat"><div class="stat-n">{len(AUDIO_PROVIDERS)}</div><div class="stat-l">Audio Models</div></div>
     </div>
   </div>
 
-  <div class="baseurl-box">
-    <span class="baseurl-label">Base URL</span>
-    <span class="baseurl-val" id="base-url-val">loading...</span>
-    <button class="copy-btn" id="copy-base-btn" onclick="copyBase()">Copy</button>
-  </div>
-
-  <div class="lock-notice" id="lock-notice">
-    <span>Semua endpoint memerlukan API key.</span>
-    <button class="auth-btn" style="font-size:12px;padding:5px 14px" onclick="openModal()">Login / Daftar</button>
-  </div>
-
-  <div class="apikey-bar" id="apikey-bar">
-    <span class="apikey-label">API Key</span>
-    <span class="apikey-val" id="apikey-display"></span>
-    <div class="apikey-actions">
-      <button id="copy-key-btn" onclick="copyApiKey()">Copy</button>
-      <button onclick="doRegenKey()">Regenerate</button>
+  <div class="cred-grid">
+    <div class="cred-box">
+      <span class="cred-label">Base URL</span>
+      <span class="cred-val" id="base-url-val">—</span>
+      <div class="cred-actions"><button id="copy-base-btn" onclick="copyBase()">Copy</button></div>
+    </div>
+    <div class="lock-notice" id="lock-notice">
+      <span>Authentication required — sign in to get your API key.</span>
+      <button class="auth-btn" style="font-size:12px;padding:4px 12px" onclick="openModal()">Sign in</button>
+    </div>
+    <div class="cred-box key-box" id="apikey-bar" style="display:none">
+      <span class="cred-label purple">API Key</span>
+      <span class="cred-val" id="apikey-display"></span>
+      <div class="cred-actions">
+        <button id="copy-key-btn" onclick="copyApiKey()">Copy</button>
+        <button onclick="doRegenKey()">Regenerate</button>
+      </div>
     </div>
   </div>
 
-  <!-- ── Endpoints ── -->
-  <div class="sec-title">Endpoints</div>
+  <div class="sec-head"><span class="sec-title">Endpoints</span><span class="sec-line"></span></div>
 
   <!-- POST /v1/chat/completions -->
   <div class="card">
     <div class="card-head" onclick="toggle(this)">
       <span class="mth post">POST</span>
-      <span class="ep">/v1/chat/completions<span class="tag tag-compat">OpenAI Compatible</span></span>
-      <span class="sum">Chat AI · Tool Calling</span>
+      <span class="ep">/v1/chat/completions<span class="badge badge-oa">OpenAI Compatible</span></span>
+      <span class="ep-meta">Chat · Tools · Memory</span>
+      <span class="chevron">▾</span>
     </div>
     <div class="card-body">
-      <div class="url-preview"><strong>POST</strong> <span class="base-url-span"></span>/v1/chat/completions</div>
-      <p class="card-desc">Endpoint utama. Support <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, dan <code>conversation_id</code> untuk multi-turn memory. Compatible dengan LangChain, AutoGen, CrewAI.</p>
+      <div class="url-bar"><span class="mth post">POST</span><span class="url-text base-url-span"></span><span style="color:var(--muted)">/v1/chat/completions</span></div>
       <div class="field">
-        <label>Pesan <span class="req">*</span></label>
-        <textarea id="v1-prompt" placeholder="Tulis pesan..."></textarea>
+        <label>Message<span class="req">*</span></label>
+        <textarea id="v1-prompt" placeholder="Enter your message..."></textarea>
       </div>
       <div class="field">
-        <label>System prompt <span class="opt">(opsional)</span></label>
-        <input id="v1-system" placeholder="Kamu adalah asisten yang membantu..."/>
+        <label>System prompt <span class="opt">optional</span></label>
+        <input id="v1-system" placeholder="You are a helpful assistant."/>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Conversation ID <span class="opt">optional — for multi-turn</span></label>
+          <input id="v1-conv-id" placeholder="Leave blank to start new"/>
+        </div>
       </div>
       <div class="field">
-        <label>Conversation ID <span class="opt">(opsional — untuk melanjutkan percakapan)</span></label>
-        <input id="v1-conv-id" placeholder="Kosongkan untuk percakapan baru"/>
+        <label>Tools <span class="opt">optional — JSON array</span></label>
+        <textarea id="v1-tools" style="min-height:76px;font-family:var(--mono);font-size:12px" placeholder='[{{"type":"function","function":{{"name":"get_weather","description":"Get weather","parameters":{{"type":"object","properties":{{"location":{{"type":"string"}}}},"required":["location"]}}}}}}]'></textarea>
       </div>
-      <div class="field">
-        <label>Tools <span class="opt">(JSON array, opsional)</span></label>
-        <textarea id="v1-tools" style="min-height:80px;font-family:var(--mono);font-size:12px" placeholder='[{{"type":"function","function":{{"name":"get_weather","description":"Get weather","parameters":{{"type":"object","properties":{{"location":{{"type":"string"}}}},"required":["location"]}}}}}}]'></textarea>
+      <div class="form-actions">
+        <button class="btn" onclick="execV1()"><span>Send Request</span><div class="spin" id="sp-v1"></div></button>
       </div>
-      <button class="btn" onclick="execV1()"><span>Kirim</span><div class="spin" id="sp-v1"></div></button>
       <div class="res-wrap" id="wr-v1"></div>
     </div>
   </div>
@@ -1061,20 +1093,23 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
   <div class="card">
     <div class="card-head" onclick="toggle(this)">
       <span class="mth post">POST</span>
-      <span class="ep">/image<span class="tag tag-auto">Auto Fallback</span></span>
-      <span class="sum">Generate gambar</span>
+      <span class="ep">/image<span class="badge badge-af">Auto Fallback</span></span>
+      <span class="ep-meta">Image Generation</span>
+      <span class="chevron">▾</span>
     </div>
     <div class="card-body">
-      <div class="url-preview"><strong>POST</strong> <span class="base-url-span"></span>/image</div>
+      <div class="url-bar"><span class="mth post">POST</span><span class="url-text base-url-span"></span><span style="color:var(--muted)">/image</span></div>
       <div class="field">
-        <label>Prompt <span class="req">*</span></label>
-        <textarea id="au-img-p" placeholder="Deskripsi gambar yang ingin dibuat..."></textarea>
+        <label>Prompt<span class="req">*</span></label>
+        <textarea id="au-img-p" placeholder="Describe the image you want to generate..."></textarea>
       </div>
       <div class="row">
         <div class="field"><label>Width</label><input id="au-img-w" type="number" value="1024"/></div>
         <div class="field"><label>Height</label><input id="au-img-h" type="number" value="1024"/></div>
       </div>
-      <button class="btn" onclick="execAutoImage()"><span>Generate</span><div class="spin" id="sp-au-img"></div></button>
+      <div class="form-actions">
+        <button class="btn" onclick="execAutoImage()"><span>Generate</span><div class="spin" id="sp-au-img"></div></button>
+      </div>
       <div class="res-wrap" id="wr-au-img"></div>
       <img id="img-au-out" class="img-out"/>
     </div>
@@ -1084,31 +1119,33 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
   <div class="card">
     <div class="card-head" onclick="toggle(this)">
       <span class="mth post">POST</span>
-      <span class="ep">/audio<span class="tag tag-auto">Auto Fallback</span></span>
-      <span class="sum">Text to Speech</span>
+      <span class="ep">/audio<span class="badge badge-af">Auto Fallback</span></span>
+      <span class="ep-meta">Text to Speech</span>
+      <span class="chevron">▾</span>
     </div>
     <div class="card-body">
-      <div class="url-preview"><strong>POST</strong> <span class="base-url-span"></span>/audio</div>
+      <div class="url-bar"><span class="mth post">POST</span><span class="url-text base-url-span"></span><span style="color:var(--muted)">/audio</span></div>
       <div class="field">
-        <label>Teks <span class="req">*</span></label>
-        <textarea id="au-aud-text" placeholder="Teks yang akan diubah menjadi suara..."></textarea>
+        <label>Text<span class="req">*</span></label>
+        <textarea id="au-aud-text" placeholder="Enter text to convert to speech..."></textarea>
       </div>
-      <button class="btn" onclick="execAutoAudio()"><span>Generate Audio</span><div class="spin" id="sp-au-aud"></div></button>
+      <div class="form-actions">
+        <button class="btn" onclick="execAutoAudio()"><span>Generate Audio</span><div class="spin" id="sp-au-aud"></div></button>
+      </div>
       <div class="res-wrap" id="wr-au-aud"></div>
     </div>
   </div>
 
-  <!-- ── Providers ── -->
-  <div class="sec-title">Providers</div>
+  <div class="sec-head" style="margin-top:36px"><span class="sec-title">Providers</span><span class="sec-line"></span></div>
 
-  <div class="prov-section-label">Chat — {len(CHAT_PROVIDERS)} aktif · auto-fallback berurutan</div>
-  <div class="prov-table">{chat_provider_rows}</div>
-
-  <div class="prov-section-label">Image</div>
-  <div class="prov-table">{image_provider_rows}</div>
-
-  <div class="prov-section-label">Audio</div>
-  <div class="prov-table">{audio_provider_rows}</div>
+  <div class="prov-table">
+    <div class="prov-sub-head">Chat — {len(CHAT_PROVIDERS)} active · sequential fallback</div>
+    {chat_provider_rows}
+    <div class="prov-sub-head">Image</div>
+    {image_provider_rows}
+    <div class="prov-sub-head">Audio</div>
+    {audio_provider_rows}
+  </div>
 
 </div>
 
@@ -1142,14 +1179,18 @@ function renderAuthState() {{
   const in_ = !!_apiKey;
   document.getElementById('auth-header-guest').style.display = in_ ? 'none' : 'block';
   document.getElementById('auth-header-user').style.display  = in_ ? 'flex' : 'none';
-  if (in_) document.getElementById('auth-uname-label').textContent = _username;
+  if (in_) {{
+    document.getElementById('auth-uname-label').textContent = _username;
+    const av = document.getElementById('auth-avatar-letter');
+    if (av) av.textContent = _username.charAt(0).toUpperCase();
+  }}
   const bar = document.getElementById('apikey-bar');
   const notice = document.getElementById('lock-notice');
   if (in_) {{
-    bar.classList.add('show'); notice.classList.remove('show');
+    bar.style.display = 'flex'; notice.style.display = 'none';
     document.getElementById('apikey-display').textContent = _apiKey;
   }} else {{
-    bar.classList.remove('show'); notice.classList.add('show');
+    bar.style.display = 'none'; notice.style.display = 'flex';
   }}
 }}
 renderAuthState();
