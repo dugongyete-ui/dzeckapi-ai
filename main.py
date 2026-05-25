@@ -4,11 +4,14 @@ load_dotenv(override=True)
 import json
 import uuid
 import time
+import re
+import base64
 import secrets
 import hashlib
 import functools
 import urllib.parse
 import requests
+from huggingface_hub import InferenceClient as HFClient
 import redis
 import psycopg2
 import psycopg2.extras
@@ -693,18 +696,106 @@ IMAGE_PROVIDERS = {
 IMAGE_ORDER = ["pollinations"]
 
 AUDIO_PROVIDERS = {
-    "pollinations-elevenlabs": {
-        "provider": Provider.PollinationsAudio,
-        "model":    "elevenlabs",
-        "desc":     "ElevenLabs TTS via Pollinations",
+    # ── Text-to-Speech ─────────────────────────────────────────────────────────
+    "hf-kokoro": {
+        "model":    "hexgrad/Kokoro-82M",
+        "type":     "tts",
+        "desc":     "Kokoro-82M — ringan & sangat natural (state-of-the-art TTS)",
+        "content_type": "audio/wav",
     },
-    "pollinations-openai-tts": {
-        "provider": Provider.PollinationsAudio,
-        "model":    "openai-audio",
-        "desc":     "OpenAI TTS via Pollinations",
+    "hf-mms-id": {
+        "model":    "facebook/mms-tts-ind",
+        "type":     "tts",
+        "desc":     "Meta MMS-TTS — dukungan terbaik Bahasa Indonesia",
+        "content_type": "audio/wav",
+    },
+    "hf-bark": {
+        "model":    "suno/bark",
+        "type":     "tts",
+        "desc":     "Bark — TTS generatif dengan ekspresi emosi & musik latar",
+        "content_type": "audio/wav",
+    },
+    # ── Music Generation ───────────────────────────────────────────────────────
+    "hf-musicgen-large": {
+        "model":    "facebook/musicgen-large",
+        "type":     "music",
+        "desc":     "MusicGen Large — musik berkualitas tinggi dari teks",
+        "content_type": "audio/wav",
+    },
+    "hf-musicgen-small": {
+        "model":    "facebook/musicgen-small",
+        "type":     "music",
+        "desc":     "MusicGen Small — cepat, musik dari teks deskripsi",
+        "content_type": "audio/wav",
+    },
+    "hf-musicgen-lofi": {
+        "model":    "voodoohop/musicgen-lofi",
+        "type":     "music",
+        "desc":     "MusicGen LoFi — khusus genre lo-fi yang tenang",
+        "content_type": "audio/wav",
+    },
+    # ── Sound Effects ──────────────────────────────────────────────────────────
+    "hf-audiogen": {
+        "model":    "facebook/audiogen-medium",
+        "type":     "sfx",
+        "desc":     "AudioGen Medium — efek suara realistis (hujan, anjing, dll)",
+        "content_type": "audio/wav",
+    },
+    "hf-audioldm2": {
+        "model":    "cvssp/audioldm2-music",
+        "type":     "sfx",
+        "desc":     "AudioLDM2 — soundscape & atmosfer suara kompleks",
+        "content_type": "audio/wav",
     },
 }
-AUDIO_ORDER = ["pollinations-elevenlabs", "pollinations-openai-tts"]
+# Urutan default: TTS → music → sfx
+AUDIO_ORDER = [
+    "hf-kokoro", "hf-mms-id", "hf-bark",
+    "hf-musicgen-small", "hf-musicgen-large", "hf-musicgen-lofi",
+    "hf-audiogen", "hf-audioldm2",
+]
+# Keyword → tipe audio
+_MUSIC_KEYWORDS = re.compile(
+    r'\b(music|musik|lagu|song|beat|melody|melodi|jazz|lofi|lo.?fi|hiphop|hip.?hop|'
+    r'piano|guitar|gitar|drum|bass|ambient|soundtrack|instrumental|compose|komposisi)\b',
+    re.IGNORECASE,
+)
+_SFX_KEYWORDS = re.compile(
+    r'\b(sound effect|sfx|efek suara|noise|ambient|suara hujan|rain|thunder|petir|'
+    r'bark|meow|dog|cat|anjing|kucing|crowd|keramaian|nature|alam|explosion|ledakan|'
+    r'footstep|langkah|atmosphere|atmosfer|soundscape)\b',
+    re.IGNORECASE,
+)
+
+
+def _detect_audio_type(text: str) -> str:
+    """Deteksi tipe audio dari teks permintaan: 'tts' | 'music' | 'sfx'."""
+    if _MUSIC_KEYWORDS.search(text):
+        return "music"
+    if _SFX_KEYWORDS.search(text):
+        return "sfx"
+    return "tts"
+
+
+def _hf_audio(text: str, model: str, content_type: str) -> bytes:
+    """Panggil HF InferenceClient text_to_audio(), coba token-1 lalu token-2."""
+    tokens = []
+    t1 = os.environ.get("HF_TOKEN", "").strip()
+    t2 = os.environ.get("HF_TOKEN_2", "").strip()
+    if t1:
+        tokens.append(t1)
+    if t2 and t2 != t1:
+        tokens.append(t2)
+    last_err = None
+    for tok in tokens:
+        try:
+            client = HFClient(token=tok)
+            audio_bytes = client.text_to_audio(text, model=model)
+            if audio_bytes:
+                return audio_bytes
+        except Exception as e:
+            last_err = e
+    raise last_err or RuntimeError("Tidak ada HF_TOKEN yang tersedia")
 
 
 # ── Tool calling helpers ───────────────────────────────────────────────────────
@@ -952,22 +1043,37 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
     return None, None, errors
 
 
-def run_audio_fallback(text, model_override=None):
+def run_audio_fallback(text: str, model_override: str = None, audio_type: str = None):
+    """
+    Coba provider HF audio secara berurutan.
+    - audio_type : 'tts' | 'music' | 'sfx' | None (auto-detect dari text)
+    - Kembalikan (audio_bytes, provider_key, content_type, errors)
+    """
     errors = {}
-    for pk in AUDIO_ORDER:
+    detected = audio_type or _detect_audio_type(text)
+
+    # Susun urutan: prioritaskan provider sesuai tipe yang terdeteksi
+    preferred = [pk for pk in AUDIO_ORDER if AUDIO_PROVIDERS[pk]["type"] == detected]
+    others    = [pk for pk in AUDIO_ORDER if AUDIO_PROVIDERS[pk]["type"] != detected]
+    order = preferred + others
+
+    print(f"[Audio] detected_type={detected} → mencoba {len(order)} provider")
+
+    for pk in order:
         cfg = AUDIO_PROVIDERS[pk]
+        model = model_override or cfg["model"]
         try:
-            resp = g4f_client.chat.completions.create(
-                model=model_override or cfg["model"],
-                provider=cfg["provider"],
-                messages=[{"role": "user", "content": text}],
-            )
-            url = resp.choices[0].message.content if resp.choices else None
-            if url:
-                return url, pk, errors
+            print(f"[Audio] mencoba {pk} ({model}) ...")
+            audio_bytes = _hf_audio(text, model, cfg["content_type"])
+            if audio_bytes:
+                print(f"[Audio] {pk} → sukses ({len(audio_bytes)} bytes) ✓")
+                return audio_bytes, pk, cfg["content_type"], errors
         except Exception as e:
             errors[pk] = str(e)
-    return None, None, errors
+            print(f"[Audio] {pk} → error: {e}")
+
+    print("[Audio] Semua provider gagal")
+    return None, None, None, errors
 
 
 def make_image_url(prompt, model="sana", width=1024, height=1024):
@@ -1972,15 +2078,54 @@ def image_auto():
 
 @app.route("/audio", methods=["POST"])
 def audio_auto():
+    """
+    POST /audio
+    Body JSON:
+      - text        : teks yang akan dikonversi (wajib)
+      - model       : override model HF (opsional)
+      - audio_type  : 'tts' | 'music' | 'sfx' (opsional, default auto-detect)
+      - return_type : 'base64' | 'binary' (opsional, default 'base64')
+
+    Response (base64 mode):
+      { provider_used, audio_type, model, content_type, audio_base64, size_bytes, skipped, author }
+
+    Response (binary mode):
+      Content-Type: audio/wav  (langsung bytes)
+    """
     data, err, code = parse_body("text")
     if err:
         return err, code
-    url, used, errors = run_audio_fallback(data["text"], data.get("model"))
-    if url:
-        log_api_request("/audio", used, True)
-        return jsonify({"provider_used": used, "audio_url": url, "skipped": errors})
-    log_api_request("/audio", None, False, "Semua provider audio gagal")
-    return jsonify({"error": "Semua provider audio gagal.", "details": errors}), 503
+
+    audio_bytes, used, ctype, errors = run_audio_fallback(
+        data["text"],
+        model_override=data.get("model"),
+        audio_type=data.get("audio_type"),
+    )
+
+    if not audio_bytes:
+        log_api_request("/audio", None, False, "Semua provider audio gagal")
+        return jsonify({"error": "Semua provider audio gagal.", "details": errors, "author": "dzeck"}), 503
+
+    log_api_request("/audio", used, True)
+    cfg = AUDIO_PROVIDERS[used]
+
+    if data.get("return_type") == "binary":
+        resp = make_response(audio_bytes)
+        resp.headers["Content-Type"] = ctype
+        resp.headers["X-Provider-Used"] = used
+        resp.headers["X-Audio-Model"] = cfg["model"]
+        return resp
+
+    return jsonify({
+        "provider_used": used,
+        "audio_type":    cfg["type"],
+        "model":         cfg["model"],
+        "content_type":  ctype,
+        "audio_base64":  base64.b64encode(audio_bytes).decode(),
+        "size_bytes":    len(audio_bytes),
+        "skipped":       errors,
+        "author":        "dzeck",
+    })
 
 
 # ── Specific provider endpoints ───────────────────────────────────────────────
@@ -2030,25 +2175,49 @@ def image_specific(provider_key):
 
 @app.route("/audio/<provider_key>", methods=["POST"])
 def audio_specific(provider_key):
+    """
+    POST /audio/<provider_key>
+    Panggil provider HF audio tertentu secara langsung.
+    Body JSON:
+      - text        : teks yang akan diproses (wajib)
+      - model       : override model HF (opsional)
+      - return_type : 'base64' | 'binary' (opsional, default 'base64')
+    """
     pk = provider_key.lower()
     if pk not in AUDIO_PROVIDERS:
-        return jsonify({"error": f"Provider '{pk}' tidak ada.", "tersedia": AUDIO_ORDER}), 404
+        return jsonify({
+            "error": f"Provider '{pk}' tidak ada.",
+            "tersedia": {k: {"model": v["model"], "type": v["type"], "desc": v["desc"]}
+                         for k, v in AUDIO_PROVIDERS.items()},
+            "author": "dzeck",
+        }), 404
     data, err, code = parse_body("text")
     if err:
         return err, code
     cfg = AUDIO_PROVIDERS[pk]
+    model = data.get("model") or cfg["model"]
     try:
-        resp = g4f_client.chat.completions.create(
-            model=data.get("model") or cfg["model"],
-            provider=cfg["provider"],
-            messages=[{"role": "user", "content": data["text"]}],
-        )
-        audio_url = resp.choices[0].message.content if resp.choices else None
+        audio_bytes = _hf_audio(data["text"], model, cfg["content_type"])
         log_api_request(f"/audio/{pk}", pk, True)
-        return jsonify({"provider": pk, "audio_url": audio_url})
+
+        if data.get("return_type") == "binary":
+            resp = make_response(audio_bytes)
+            resp.headers["Content-Type"] = cfg["content_type"]
+            resp.headers["X-Provider-Used"] = pk
+            return resp
+
+        return jsonify({
+            "provider":     pk,
+            "audio_type":   cfg["type"],
+            "model":        model,
+            "content_type": cfg["content_type"],
+            "audio_base64": base64.b64encode(audio_bytes).decode(),
+            "size_bytes":   len(audio_bytes),
+            "author":       "dzeck",
+        })
     except Exception as e:
         log_api_request(f"/audio/{pk}", pk, False, str(e))
-        return jsonify({"error": str(e), "provider": pk}), 500
+        return jsonify({"error": str(e), "provider": pk, "author": "dzeck"}), 500
 
 
 # ── Analytics endpoint ────────────────────────────────────────────────────────
