@@ -1807,16 +1807,16 @@ input::placeholder{{color:var(--muted)}}
     <h2>Ready to build with AI?</h2>
     <p>One API key. Every major model. Start building in under 2 minutes.</p>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button class="btn-hero-primary" onclick="openModal('register')">Start Building Free →</button>
+      <button id="cta-bottom-btn" class="btn-hero-primary" onclick="openModal('register')">Start Building Free →</button>
       <a href="/dashboard" class="btn-hero-secondary">View Documentation</a>
     </div>
-    <p class="cta-meta">Free to use · No credit card required · OpenAI SDK compatible</p>
+    <p id="cta-meta-text" class="cta-meta">Free to use · No credit card required · OpenAI SDK compatible</p>
   </div>
 </section>
 
 <!-- Footer -->
 <footer>
-  <p>© 2025 DzeckAPI — AI Gateway &nbsp;·&nbsp; <a href="/dashboard">Documentation</a> &nbsp;·&nbsp; <a href="#" onclick="openModal('login');return false">Login</a></p>
+  <p>© 2025 DzeckAPI — AI Gateway &nbsp;·&nbsp; <a href="/dashboard">Documentation</a> &nbsp;·&nbsp; <a id="footer-auth-link" href="#" onclick="openModal('login');return false">Login</a></p>
 </footer>
 
 <script>
@@ -1898,11 +1898,26 @@ document.addEventListener('keydown', e => {{ if (e.key === 'Escape') closeModal(
       + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>'
       + 'Dashboard</a>';
   }}
-  // Ganti hero CTA utama
+  // Ganti hero CTA utama (hero section)
   const heroBtn = document.querySelector('.btn-hero-primary');
   if (heroBtn) {{
     heroBtn.textContent = 'Go to Dashboard';
     heroBtn.onclick = function() {{ window.location.href = '/dashboard'; }};
+  }}
+  // Ganti tombol CTA bawah
+  const ctaBtn = document.getElementById('cta-bottom-btn');
+  if (ctaBtn) {{
+    ctaBtn.textContent = 'Go to Dashboard →';
+    ctaBtn.onclick = function() {{ window.location.href = '/dashboard'; }};
+  }}
+  const ctaMeta = document.getElementById('cta-meta-text');
+  if (ctaMeta) ctaMeta.style.display = 'none';
+  // Ganti link Login di footer
+  const footerLink = document.getElementById('footer-auth-link');
+  if (footerLink) {{
+    footerLink.textContent = 'Dashboard';
+    footerLink.href = '/dashboard';
+    footerLink.onclick = null;
   }}
 }})();
 </script>
