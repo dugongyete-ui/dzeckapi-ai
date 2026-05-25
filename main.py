@@ -960,17 +960,50 @@ def _edge_tts_generate(text: str, voice: str) -> bytes:
 
 # ── Tool calling helpers ───────────────────────────────────────────────────────
 
-TOOL_SYSTEM_INJECT = """
-Kamu adalah AI agent yang memiliki akses ke tools/functions berikut:
+# ── Default system prompt (fallback jika user tidak kirim system message) ──────
+DEFAULT_SYSTEM_PROMPT = """You are a helpful, accurate, and concise AI assistant.
+You respond in the same language the user uses.
+You are honest about what you know and don't know.
+When using tools, follow the tool-calling format exactly as instructed."""
 
+
+# ── Tool calling system prompt (diinjeksi untuk g4f providers) ─────────────────
+TOOL_SYSTEM_INJECT = """\
+You have access to the following tools/functions:
+
+<tools>
 {tools_json}
+</tools>
 
-## Aturan Penting:
-- Jika kamu perlu memanggil tool, balas HANYA dengan JSON berikut (tanpa teks tambahan):
-  {{"tool_calls": [{{"id": "call_{rand_id}", "type": "function", "function": {{"name": "NAMA_TOOL", "arguments": "{{...json arguments...}}"}}}}]}}
-- Kamu bisa memanggil lebih dari satu tool sekaligus dalam array tool_calls.
-- Jika tidak perlu tool, balas dengan teks biasa.
-- JANGAN campurkan tool_calls JSON dengan teks biasa.
+## Tool Calling Rules
+
+When you need to call a tool, respond with ONLY a raw JSON object — no explanation, \
+no markdown, no code block, no text before or after:
+
+{{"tool_calls": [
+  {{
+    "id": "call_{rand_id}",
+    "type": "function",
+    "function": {{
+      "name": "<tool_name>",
+      "arguments": "<json_string_of_args>"
+    }}
+  }}
+]}}
+
+### Parallel calls (when multiple tools are needed at once):
+{{"tool_calls": [
+  {{"id": "call_{rand_id}a", "type": "function", "function": {{"name": "<tool1>", "arguments": "<args1>"}}}},
+  {{"id": "call_{rand_id}b", "type": "function", "function": {{"name": "<tool2>", "arguments": "<args2>"}}}}
+]}}
+
+### Rules:
+1. If a tool is needed → output ONLY the JSON above, nothing else.
+2. If no tool is needed → reply normally in plain text.
+3. NEVER mix tool call JSON with plain text in the same response.
+4. NEVER wrap the JSON in markdown (no ```json blocks).
+5. The "arguments" field MUST be a JSON-encoded string, not a raw object.
+6. Only call tools that are listed above. Never invent tool names.
 """
 
 def build_tool_system_prompt(tools: list, forced_tool_name: str = None) -> str:
@@ -978,7 +1011,11 @@ def build_tool_system_prompt(tools: list, forced_tool_name: str = None) -> str:
     rand_id = uuid.uuid4().hex[:8]
     prompt = TOOL_SYSTEM_INJECT.format(tools_json=tools_json, rand_id=rand_id)
     if forced_tool_name:
-        prompt += f"\n⚠️ KAMU WAJIB memanggil tool '{forced_tool_name}' sekarang. Jangan jawab dengan teks biasa."
+        prompt += (
+            f"\n\n## MANDATORY\n"
+            f"You MUST call the tool '{forced_tool_name}' right now. "
+            f"Do NOT reply with plain text. Output only the tool_calls JSON."
+        )
     return prompt
 
 
@@ -2206,11 +2243,11 @@ def v1_chat_completions():
     if conv_id:
         history = load_conversation(conv_id)
 
-    # System message hanya untuk custom system prompt — tool definitions
-    # dikirim native ke provider (openai_compatible) atau diinjeksi per-call (g4f)
+    # System message: gunakan dari request, atau fallback ke DEFAULT_SYSTEM_PROMPT
+    # Tool definitions dikirim native ke provider (openai_compatible) atau diinjeksi per-call (g4f)
     final_messages = []
-    if system_text:
-        final_messages.append({"role": "system", "content": system_text})
+    effective_system = system_text.strip() if system_text else DEFAULT_SYSTEM_PROMPT
+    final_messages.append({"role": "system", "content": effective_system})
 
     final_messages += [m for m in history if m.get("role") != "system"]
     final_messages += incoming_messages
@@ -2234,7 +2271,11 @@ def v1_chat_completions():
 
     # Jika tool_choice forced ke nama tertentu, inject instruksi ke system message
     if forced_tool_name and active_tools:
-        force_msg = f"\n\n⚠️ KAMU WAJIB memanggil tool '{forced_tool_name}' sekarang."
+        force_msg = (
+            f"\n\n## MANDATORY\n"
+            f"You MUST call the tool '{forced_tool_name}' right now. "
+            f"Do NOT reply with plain text. Output only the tool_calls JSON."
+        )
         if final_messages and final_messages[0].get("role") == "system":
             final_messages[0] = {
                 "role": "system",
