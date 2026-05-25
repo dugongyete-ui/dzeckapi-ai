@@ -1920,6 +1920,7 @@ def build_docs_html():
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="DzeckAPI dashboard — manage your API key, explore endpoints, and access every major AI model through one unified gateway."/>
 <title>DzeckAPI — AI Gateway</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
