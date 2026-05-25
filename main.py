@@ -809,48 +809,48 @@ def build_docs_html():
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
 :root{{
-  --bg:#F8F8F6;--surface:#FFFFFF;--surface2:#F2F2F0;--surface3:#E8E8E6;
-  --border:#D7D7D5;--border-hi:#B7B7B5;
-  --text:#141413;--sub:#5C6370;--muted:#8A8A88;--muted2:#ABABAA;
-  --accent:#141413;--accent-dim:rgba(20,20,19,.06);--accent-border:rgba(20,20,19,.2);
-  --danger:#c0392b;--danger-dim:rgba(192,57,43,.06);--danger-border:rgba(192,57,43,.2);
+  --bg:#1a1917;--surface:#242220;--surface2:#2c2a28;--surface3:#343230;
+  --border:#3a3734;--border-hi:#4e4a46;
+  --text:#ede8e0;--sub:#a09488;--muted:#6e6560;--muted2:#4e4a46;
+  --accent:#d97757;--accent-dim:rgba(217,119,87,.12);--accent-border:rgba(217,119,87,.3);
+  --danger:#c0604a;--danger-dim:rgba(192,96,74,.1);--danger-border:rgba(192,96,74,.25);
   --mono:'JetBrains Mono','Fira Code','Menlo',monospace;
   --r:10px;--r-sm:8px;--r-xs:6px;
 }}
 body{{background:var(--bg);color:var(--text);font-family:'Inter','Anthropic Sans','Helvetica Neue',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}}
 ::-webkit-scrollbar{{width:4px;height:4px}}
 ::-webkit-scrollbar-track{{background:transparent}}
-::-webkit-scrollbar-thumb{{background:var(--border);border-radius:4px}}
+::-webkit-scrollbar-thumb{{background:var(--border-hi);border-radius:4px}}
 
 /* ── Header ── */
-header{{border-bottom:1px solid var(--border);padding:0 32px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(248,248,246,.94);backdrop-filter:blur(16px);z-index:100}}
+header{{border-bottom:1px solid var(--border);padding:0 32px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(26,25,23,.92);backdrop-filter:blur(18px);z-index:100}}
 .logo{{font-size:14px;font-weight:600;letter-spacing:-.3px;color:var(--text);display:flex;align-items:center;gap:9px}}
-.logo-icon{{width:24px;height:24px;background:var(--text);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--bg);flex-shrink:0}}
+.logo-icon{{width:24px;height:24px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}}
 .header-center{{display:flex;align-items:center;gap:5px}}
 .hpill{{font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:var(--surface)}}
-.hpill.live{{background:var(--surface2);color:var(--sub)}}
+.hpill.live{{border-color:var(--border-hi);color:var(--sub)}}
 .header-right{{display:flex;align-items:center;gap:8px}}
 
 /* ── Auth buttons ── */
-.auth-btn{{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 16px;border-radius:var(--r-sm);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}}
-.auth-btn:hover{{background:var(--surface2);border-color:var(--border-hi)}}
+.auth-btn{{background:var(--surface);border:1px solid var(--border-hi);color:var(--text);padding:6px 16px;border-radius:var(--r-sm);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}}
+.auth-btn:hover{{background:var(--surface2);border-color:var(--muted)}}
 .auth-user{{display:flex;align-items:center;gap:9px}}
-.auth-avatar{{width:26px;height:26px;border-radius:99px;background:var(--text);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--bg);flex-shrink:0}}
+.auth-avatar{{width:26px;height:26px;border-radius:99px;background:var(--surface3);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text);flex-shrink:0}}
 .auth-uname{{font-size:13px;font-weight:500;color:var(--sub)}}
 .auth-logout{{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}}
 .auth-logout:hover{{color:var(--text);border-color:var(--border-hi)}}
 
 /* ── Auth Modal ── */
-.overlay{{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center}}
+.overlay{{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center}}
 .overlay.open{{display:flex}}
-.modal{{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:380px;margin:16px;padding:28px 26px 24px;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.12)}}
+.modal{{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;width:100%;max-width:380px;margin:16px;padding:28px 26px 24px;position:relative;box-shadow:0 32px 80px rgba(0,0,0,.5)}}
 .modal-close{{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;font-family:inherit;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .15s}}
 .modal-close:hover{{background:var(--surface2);color:var(--text)}}
 .modal h2{{font-size:17px;font-weight:700;margin-bottom:3px;letter-spacing:-.4px;color:var(--text)}}
 .modal .sub{{color:var(--muted);font-size:12.5px;margin-bottom:22px}}
 .tab-row{{display:flex;gap:3px;margin-bottom:20px;background:var(--surface2);border-radius:var(--r-sm);padding:3px;border:1px solid var(--border)}}
 .tab{{flex:1;padding:6px;border-radius:6px;border:none;background:none;color:var(--muted);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit}}
-.tab.active{{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}}
+.tab.active{{background:var(--surface3);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.35)}}
 .modal .btn{{width:100%;justify-content:center;margin-top:6px}}
 .modal-err{{color:var(--danger);font-size:12px;margin-top:10px;display:none;padding:9px 12px;background:var(--danger-dim);border:1px solid var(--danger-border);border-radius:var(--r-xs)}}
 
@@ -910,16 +910,16 @@ label{{display:block;font-size:11.5px;color:var(--sub);margin-bottom:5px;font-we
 label .req{{color:var(--muted);margin-left:2px}}
 label .opt{{color:var(--muted2);font-weight:400;font-size:11px}}
 input,select,textarea{{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s}}
-input:focus,select:focus,textarea:focus{{border-color:var(--border-hi);box-shadow:0 0 0 3px rgba(0,0,0,.06)}}
+input:focus,select:focus,textarea:focus{{border-color:var(--accent-border);box-shadow:0 0 0 3px var(--accent-dim)}}
 input::placeholder,textarea::placeholder{{color:var(--muted2)}}
 textarea{{resize:vertical;min-height:72px;line-height:1.55}}
 select option{{background:var(--surface)}}
 .row{{display:flex;gap:10px}}.row .field{{flex:1}}
 .form-actions{{margin-top:6px}}
-.btn{{background:var(--text);color:var(--bg);border:none;padding:9px 20px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .08s;display:inline-flex;align-items:center;gap:8px;font-family:inherit}}
-.btn:hover{{opacity:.85}}.btn:active{{transform:scale(.98)}}.btn:disabled{{opacity:.35;cursor:not-allowed}}
+.btn{{background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .08s;display:inline-flex;align-items:center;gap:8px;font-family:inherit}}
+.btn:hover{{opacity:.88}}.btn:active{{transform:scale(.98)}}.btn:disabled{{opacity:.35;cursor:not-allowed}}
 @keyframes spin{{to{{transform:rotate(360deg)}}}}
-.spin{{width:12px;height:12px;border:2px solid rgba(248,248,246,.3);border-top-color:var(--bg);border-radius:50%;animation:spin .55s linear infinite;display:none;flex-shrink:0}}
+.spin{{width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .55s linear infinite;display:none;flex-shrink:0}}
 
 /* ── Response ── */
 .res-wrap{{margin-top:16px}}
