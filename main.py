@@ -2095,6 +2095,13 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
         </div>
       </div>
       <div class="field">
+        <label>Model <span class="opt">optional — leave blank for auto routing</span></label>
+        <select id="v1-model" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--r-xs);padding:8px 10px;width:100%;font-size:13px;font-family:inherit">
+          <option value="">Auto (smart routing by intent)</option>
+          {''.join(f'<option value="{k}">{_public_label(k)} — {v["desc"].split(" — ")[0] if " — " in v["desc"] else v["desc"]}</option>' for k, v in CHAT_PROVIDERS.items() if not v.get("is_t2"))}
+        </select>
+      </div>
+      <div class="field">
         <label>Tools <span class="opt">optional — JSON array</span></label>
         <textarea id="v1-tools" style="min-height:76px;font-family:var(--mono);font-size:12px" placeholder='[{{"type":"function","function":{{"name":"get_weather","description":"Get weather","parameters":{{"type":"object","properties":{{"location":{{"type":"string"}}}},"required":["location"]}}}}}}]'></textarea>
       </div>
@@ -2394,16 +2401,20 @@ async function execV1() {{
   const toolsRaw = document.getElementById('v1-tools').value.trim();
   let tools;
   if (toolsRaw) {{ try {{ tools = JSON.parse(toolsRaw); }} catch(e) {{ showResult('wr-v1','sp-v1',400,'Tools JSON tidak valid: '+e.message); return; }} }}
+  const selectedModel = document.getElementById('v1-model').value;
   const body = {{
     messages: [{{role:'user', content: document.getElementById('v1-prompt').value}}],
     conversation_id: document.getElementById('v1-conv-id').value || undefined,
     system: document.getElementById('v1-system').value || undefined,
     tools,
   }};
+  if (selectedModel) body.model = selectedModel;
   try {{
     const r = await fetch('/v1/chat/completions', {{method:'POST',headers:authHeaders(),body:JSON.stringify(body)}});
     const d = await r.json();
-    showResult('wr-v1','sp-v1',r.status,d,{{provider:d.provider_used,conv_id:d.conversation_id}});
+    const convId = r.headers.get('X-Conversation-Id') || d.conversation_id;
+    const provider = d.system_fingerprint ? d.system_fingerprint.replace('fp_dzeck_','') : d.provider_used;
+    showResult('wr-v1','sp-v1',r.status,d,{{provider, conv_id: convId}});
   }} catch(e) {{ showResult('wr-v1','sp-v1',0,e.message); }}
 }}
 
