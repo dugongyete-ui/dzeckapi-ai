@@ -1,0 +1,37 @@
+# Environment variables — JANGAN di-commit
+.env
+.env.*
+!.env.example
+
+# Replit internal files
+.local/
+.cache/
+.config/
+.upm/
+
+# File media & screenshot — JANGAN di-commit
+attached_assets/
+generated_media/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

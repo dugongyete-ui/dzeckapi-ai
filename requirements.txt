@@ -1,0 +1,12 @@
+flask
+gunicorn
+requests
+werkzeug
+g4f
+meta-ai-api
+ddgs
+pymongo
+redis
+dnspython
+psycopg2-binary
+python-dotenv
