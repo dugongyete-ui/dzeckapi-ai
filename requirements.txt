@@ -10,3 +10,15 @@ redis
 dnspython
 psycopg2-binary
 python-dotenv
+dnspython
+flask
+g4f
+gunicorn
+psycopg2-binary
+pymongo
+python-dotenv
+redis
+requests
+werkzeug
+ddgs
+meta-ai-api
