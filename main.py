@@ -559,6 +559,11 @@ _PUBLIC_LABEL: dict[str, str] = {
     "edge-en-male":          "English · Male",
     "edge-en-multilingual":  "English · Multilingual",
     "edge-en-gb-female":     "English UK · Female",
+    # Image
+    "hf-flux-schnell":      "FLUX.1-schnell",
+    "hf-flux-dev":          "FLUX.1-dev",
+    "hf-sdxl":              "Stable Diffusion XL",
+    "pollinations-image":   "Pollinations",
 }
 
 def _public_label(pid: str) -> str:
@@ -738,12 +743,28 @@ def get_order_for_intent(intent: str) -> list:
 
 
 IMAGE_PROVIDERS = {
+    "hf-flux-schnell": {
+        "model":   "black-forest-labs/FLUX.1-schnell",
+        "type":    "huggingface",
+        "desc":    "FLUX.1-schnell — fast, high-quality (HuggingFace free tier)",
+    },
+    "hf-flux-dev": {
+        "model":   "black-forest-labs/FLUX.1-dev",
+        "type":    "huggingface",
+        "desc":    "FLUX.1-dev — detailed, high-quality (HuggingFace free tier)",
+    },
+    "hf-sdxl": {
+        "model":   "stabilityai/stable-diffusion-xl-base-1.0",
+        "type":    "huggingface",
+        "desc":    "Stable Diffusion XL — photorealistic (HuggingFace free tier)",
+    },
     "pollinations": {
-        "model": "sana",
-        "desc":  "Pollinations Image (Sana model)",
+        "model":   "sana",
+        "type":    "pollinations",
+        "desc":    "Pollinations Image (Sana model, no key required)",
     },
 }
-IMAGE_ORDER = ["pollinations"]
+IMAGE_ORDER = ["hf-flux-schnell", "hf-flux-dev", "hf-sdxl", "pollinations"]
 
 AUDIO_PROVIDERS = {
     # ── Bahasa Indonesia ───────────────────────────────────────────────────────
@@ -1188,6 +1209,49 @@ def make_image_url(prompt, model="sana", width=1024, height=1024):
     return f"https://image.pollinations.ai/prompt/{enc}?model={model}&width={width}&height={height}&nologo=true"
 
 
+def _hf_image_generate(prompt: str, model_id: str, width: int = 1024, height: int = 1024) -> bytes:
+    """Generate gambar dari HuggingFace Inference API, return PNG bytes."""
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HF_TOKEN_2")
+    if not token:
+        raise RuntimeError("HF_TOKEN tidak tersedia di environment")
+    client = HFClient(token=token)
+    img = client.text_to_image(prompt, model=model_id, width=width, height=height)
+    import io as _io_mod
+    buf = _io_mod.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def run_image_fallback(prompt: str, model: str = None, width: int = 1024, height: int = 1024):
+    """
+    Generate gambar dengan auto-fallback antar provider.
+    - model  : provider key (misal 'hf-flux-schnell'), None = coba urutan default
+    - Return : (image_data, provider_key, content_type, errors)
+      image_data bisa berupa URL string (pollinations) atau bytes (hf)
+    """
+    errors = {}
+    order = ([model] + [k for k in IMAGE_ORDER if k != model]) if (model and model in IMAGE_PROVIDERS) else IMAGE_ORDER
+
+    for pk in order:
+        cfg = IMAGE_PROVIDERS.get(pk)
+        if not cfg:
+            continue
+        try:
+            if cfg["type"] == "huggingface":
+                img_bytes = _hf_image_generate(prompt, cfg["model"], width, height)
+                print(f"[Image] {pk} → sukses ({len(img_bytes)//1024}KB) ✓")
+                return img_bytes, pk, "image/png", errors
+            else:  # pollinations
+                url = make_image_url(prompt, cfg["model"], width, height)
+                print(f"[Image] {pk} → URL generated ✓")
+                return url, pk, "image/url", errors
+        except Exception as e:
+            errors[pk] = str(e)
+            print(f"[Image] {pk} → error: {e}")
+
+    return None, None, None, errors
+
+
 # ── OpenAI-compatible response builders ───────────────────────────────────────
 
 def build_completion_response(content, provider_used, tool_calls=None, finish_reason="stop"):
@@ -1589,6 +1653,13 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
         <label>Prompt<span class="req">*</span></label>
         <textarea id="au-img-p" placeholder="Describe the image you want to generate..."></textarea>
       </div>
+      <div class="field">
+        <label>Model <span class="opt">optional — leave blank for auto fallback</span></label>
+        <select id="au-img-model" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--r-xs);padding:8px 10px;width:100%;font-size:13px;font-family:inherit">
+          <option value="">Auto (hf-flux-schnell → hf-flux-dev → hf-sdxl → pollinations)</option>
+          {''.join(f'<option value="{k}">{_public_label(k)} — {v["desc"].split(" (")[0]}</option>' for k, v in IMAGE_PROVIDERS.items())}
+        </select>
+      </div>
       <div class="row">
         <div class="field"><label>Width</label><input id="au-img-w" type="number" value="1024"/></div>
         <div class="field"><label>Height</label><input id="au-img-h" type="number" value="1024"/></div>
@@ -1597,7 +1668,7 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
         <button class="btn" onclick="execAutoImage()"><span>Generate</span><div class="spin" id="sp-au-img"></div></button>
       </div>
       <div class="res-wrap" id="wr-au-img"></div>
-      <img id="img-au-out" class="img-out"/>
+      <img id="img-au-out" class="img-out" style="display:none;max-width:100%;border-radius:var(--r);margin-top:12px"/>
     </div>
   </div>
 
@@ -1814,12 +1885,30 @@ async function execV1() {{
 }}
 
 // ── /image ──
-function execAutoImage() {{
-  postJSON('/image', {{
+async function execAutoImage() {{
+  const model = document.getElementById('au-img-model').value;
+  const body = {{
     prompt: document.getElementById('au-img-p').value,
-    width: +document.getElementById('au-img-w').value || 1024,
+    width:  +document.getElementById('au-img-w').value || 1024,
     height: +document.getElementById('au-img-h').value || 1024,
-  }}, 'wr-au-img', 'sp-au-img', 'img-au-out');
+  }};
+  if (model) body.model = model;
+  startSpin('sp-au-img');
+  try {{
+    const r = await fetch('/image', {{method:'POST',headers:authHeaders(),body:JSON.stringify(body)}});
+    const d = await r.json();
+    showResult('wr-au-img','sp-au-img',r.status,d,{{provider:d.provider_used}});
+    const imgEl = document.getElementById('img-au-out');
+    if (r.ok && d.image_base64) {{
+      imgEl.src = 'data:' + d.content_type + ';base64,' + d.image_base64;
+      imgEl.style.display = 'block';
+    }} else if (r.ok && d.image_urls?.[0]) {{
+      imgEl.src = d.image_urls[0];
+      imgEl.style.display = 'block';
+    }} else {{
+      imgEl.style.display = 'none';
+    }}
+  }} catch(e) {{ showResult('wr-au-img','sp-au-img',0,e.message); }}
 }}
 
 // ── /audio ──
@@ -2215,21 +2304,58 @@ def chat_auto():
 
 @app.route("/image", methods=["POST"])
 def image_auto():
+    """
+    POST /image
+    Body JSON:
+      - prompt  : deskripsi gambar (wajib)
+      - model   : provider key, misal 'hf-flux-schnell' (opsional, default auto fallback)
+      - width   : lebar gambar (opsional, default 1024)
+      - height  : tinggi gambar (opsional, default 1024)
+
+    Fallback order: hf-flux-schnell → hf-flux-dev → hf-sdxl → pollinations
+
+    Response:
+      { provider_used, model, image_urls, image_base64, content_type, skipped, author }
+    """
     data, err, code = parse_body("prompt")
     if err:
         return err, code
-    try:
-        url = make_image_url(
-            data["prompt"],
-            data.get("model", "sana"),
-            data.get("width", 1024),
-            data.get("height", 1024),
-        )
-        log_api_request("/image", "pollinations", True)
-        return jsonify({"provider_used": "pollinations", "image_urls": [url]})
-    except Exception as e:
-        log_api_request("/image", "pollinations", False, str(e))
-        return jsonify({"error": str(e)}), 500
+
+    img_data, used, ctype, errors = run_image_fallback(
+        data["prompt"],
+        model=data.get("model"),
+        width=data.get("width", 1024),
+        height=data.get("height", 1024),
+    )
+
+    if img_data is None:
+        log_api_request("/image", None, False, "Semua provider image gagal")
+        return jsonify({"error": "Semua provider image gagal.", "details": errors, "author": "dzeck"}), 503
+
+    log_api_request("/image", used, True)
+    cfg = IMAGE_PROVIDERS[used]
+
+    if ctype == "image/url":
+        return jsonify({
+            "provider_used": used,
+            "model":         cfg["model"],
+            "image_urls":    [img_data],
+            "image_base64":  None,
+            "content_type":  "image/png",
+            "skipped":       errors,
+            "author":        "dzeck",
+        })
+    else:
+        return jsonify({
+            "provider_used": used,
+            "model":         cfg["model"],
+            "image_urls":    [],
+            "image_base64":  base64.b64encode(img_data).decode(),
+            "content_type":  ctype,
+            "size_bytes":    len(img_data),
+            "skipped":       errors,
+            "author":        "dzeck",
+        })
 
 
 @app.route("/audio", methods=["POST"])
@@ -2321,15 +2447,31 @@ def image_specific(provider_key):
     data, err, code = parse_body("prompt")
     if err:
         return err, code
+    cfg = IMAGE_PROVIDERS[pk]
     try:
-        url = make_image_url(
-            data["prompt"],
-            data.get("model") or IMAGE_PROVIDERS[pk]["model"],
-            data.get("width", 1024),
-            data.get("height", 1024),
-        )
-        log_api_request(f"/image/{pk}", pk, True)
-        return jsonify({"provider": pk, "image_urls": [url]})
+        w = data.get("width", 1024)
+        h = data.get("height", 1024)
+        if cfg["type"] == "huggingface":
+            img_bytes = _hf_image_generate(data["prompt"], cfg["model"], w, h)
+            log_api_request(f"/image/{pk}", pk, True)
+            return jsonify({
+                "provider_used": pk,
+                "model":         cfg["model"],
+                "image_urls":    [],
+                "image_base64":  base64.b64encode(img_bytes).decode(),
+                "content_type":  "image/png",
+                "size_bytes":    len(img_bytes),
+            })
+        else:
+            url = make_image_url(data["prompt"], cfg["model"], w, h)
+            log_api_request(f"/image/{pk}", pk, True)
+            return jsonify({
+                "provider_used": pk,
+                "model":         cfg["model"],
+                "image_urls":    [url],
+                "image_base64":  None,
+                "content_type":  "image/png",
+            })
     except Exception as e:
         log_api_request(f"/image/{pk}", pk, False, str(e))
         return jsonify({"error": str(e), "provider": pk}), 500
