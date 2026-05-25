@@ -95,7 +95,29 @@ def _extract_bearer(req) -> str | None:
     if auth.startswith("Bearer "):
         return auth[7:].strip()
     # Fallback: query param ?api_key=...
-    return req.args.get("api_key") or req.json.get("api_key") if req.is_json else None
+    if req.is_json:
+        body = req.get_json(silent=True) or {}
+        return req.args.get("api_key") or body.get("api_key")
+    return req.args.get("api_key")
+
+AUTHOR = "dzeck"
+
+@app.after_request
+def inject_author(response):
+    """Inject 'author' field into all JSON responses automatically."""
+    if response.direct_passthrough:
+        return response
+    ct = response.content_type or ""
+    if "application/json" in ct:
+        try:
+            data = response.get_json(force=True, silent=True)
+            if isinstance(data, dict) and "author" not in data:
+                data["author"] = AUTHOR
+                response.set_data(json.dumps(data, ensure_ascii=False))
+        except Exception:
+            pass
+    return response
+
 
 @app.before_request
 def require_api_key_middleware():
@@ -470,6 +492,29 @@ for _p in _NON_HF_PROVIDERS:
     CHAT_ORDER.append(_p["id"])
     if _p["tool_cap"]:
         TOOL_CAPABLE_ORDER.append(_p["id"])
+
+# ── _OPT_PROVIDERS: all API-key-based providers (for /v1/providers inactive list) ──
+_OPT_PROVIDERS = []
+for _p in _HF_PROVIDERS:
+    _OPT_PROVIDERS.append({
+        "id":      _p["id"],
+        "desc":    _p["desc"],
+        "model":   _p["model"],
+        "key_env": "HF_TOKEN",
+    })
+    _OPT_PROVIDERS.append({
+        "id":      _p["id"] + "-t2",
+        "desc":    _p["desc"] + " [token2]",
+        "model":   _p["model"],
+        "key_env": "HF_TOKEN_2",
+    })
+for _p in _NON_HF_PROVIDERS:
+    _OPT_PROVIDERS.append({
+        "id":      _p["id"],
+        "desc":    _p["desc"],
+        "model":   _p["model"],
+        "key_env": _p["key_env"],
+    })
 
 # ── Tier 4: static / no-key providers (appended last) ────────────────────────
 _STATIC_ORDER = [
@@ -868,6 +913,7 @@ def build_completion_response(content, provider_used, tool_calls=None, finish_re
         "created": int(time.time()),
         "model": provider_used,
         "provider_used": provider_used,
+        "author": AUTHOR,
         "choices": [
             {
                 "index": 0,
@@ -888,6 +934,7 @@ def _sse_chunk(resp_id, created, provider, delta, finish_reason=None):
         "id": resp_id, "object": "chat.completion.chunk",
         "created": created, "model": provider,
         "provider_used": provider,
+        "author": AUTHOR,
         "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
     }) + "\n\n"
 
@@ -1605,6 +1652,24 @@ def auth_regenerate_key():
     return jsonify({
         "message":  "API key berhasil di-generate ulang",
         "api_key":  new_key,
+    })
+
+
+@app.route("/v1/models", methods=["GET"])
+def list_models():
+    """OpenAI-compatible /v1/models endpoint."""
+    models = []
+    for pid, cfg in CHAT_PROVIDERS.items():
+        models.append({
+            "id": pid,
+            "object": "model",
+            "created": 0,
+            "owned_by": AUTHOR,
+            "description": cfg.get("desc", ""),
+        })
+    return jsonify({
+        "object": "list",
+        "data": models,
     })
 
 
