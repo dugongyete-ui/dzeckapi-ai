@@ -1697,7 +1697,7 @@ input::placeholder{{color:var(--muted)}}
 <span class="k">from</span> <span class="n">openai</span> <span class="k">import</span> <span class="n">OpenAI</span>
 
 <span class="n">client</span> <span class="p">=</span> <span class="f">OpenAI</span><span class="p">(</span>
-  <span class="n">base_url</span><span class="p">=</span><span class="s">"https://your-domain.replit.app/v1"</span><span class="p">,</span>
+  <span class="n">base_url</span><span class="p">=</span><span class="s">"<span class='landing-base-url'></span>/v1"</span><span class="p">,</span>
   <span class="n">api_key</span><span class="p">=</span><span class="s">"sk-dzcx-your-api-key"</span>
 <span class="p">)</span>
 
@@ -1710,7 +1710,7 @@ input::placeholder{{color:var(--muted)}}
 <span class="k">import</span> <span class="n">OpenAI</span> <span class="k">from</span> <span class="s">'openai'</span><span class="p">;</span>
 
 <span class="k">const</span> <span class="n">client</span> <span class="p">=</span> <span class="k">new</span> <span class="f">OpenAI</span><span class="p">({{</span>
-  <span class="n">baseURL</span><span class="p">:</span> <span class="s">'https://your-domain.replit.app/v1'</span><span class="p">,</span>
+  <span class="n">baseURL</span><span class="p">:</span> <span class="s">'<span class='landing-base-url'></span>/v1'</span><span class="p">,</span>
   <span class="n">apiKey</span><span class="p">:</span>  <span class="s">'sk-dzcx-your-api-key'</span><span class="p">,</span>
 <span class="p">}});</span>
 
@@ -1719,7 +1719,7 @@ input::placeholder{{color:var(--muted)}}
   <span class="n">messages</span><span class="p">: [{{</span> <span class="n">role</span><span class="p">:</span> <span class="s">'user'</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="s">'Hello!'</span> <span class="p">}}],</span>
 <span class="p">}});</span>
 <span class="n">console</span><span class="p">.</span><span class="f">log</span><span class="p">(</span><span class="n">res</span><span class="p">.</span><span class="n">choices</span><span class="p">[</span><span class="s">0</span><span class="p">].</span><span class="n">message</span><span class="p">.</span><span class="n">content</span><span class="p">);</span></pre></div>
-  <div class="code-body" id="code-curl" style="display:none"><pre><span class="n">curl</span> <span class="n">https://your-domain.replit.app/v1/chat/completions</span> <span class="p">\\</span>
+  <div class="code-body" id="code-curl" style="display:none"><pre><span class="n">curl</span> <span class="n"><span class='landing-base-url'></span>/v1/chat/completions</span> <span class="p">\\</span>
   <span class="n">-H</span> <span class="s">"Authorization: Bearer sk-dzcx-your-api-key"</span> <span class="p">\\</span>
   <span class="n">-H</span> <span class="s">"Content-Type: application/json"</span> <span class="p">\\</span>
   <span class="n">-d</span> <span class="s">'{{"model":"gemini-2.0-flash","messages":[{{"role":"user","content":"Hello!"}}]}}'</span></pre></div>
@@ -1885,6 +1885,12 @@ async function doRegister() {{
 }}
 
 document.addEventListener('keydown', e => {{ if (e.key === 'Escape') closeModal(); }});
+
+// ── Auto-detect base URL ──
+(function fillBaseUrl() {{
+  const origin = window.location.origin;
+  document.querySelectorAll('.landing-base-url').forEach(el => {{ el.textContent = origin; }});
+}})();
 
 // ── Cek sesi yang sudah ada saat halaman load ──
 (function checkExistingSession() {{
