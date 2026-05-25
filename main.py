@@ -1481,7 +1481,7 @@ body{{background:var(--bg);color:var(--text);font-family:'Inter','Anthropic Sans
 /* ── Header ── */
 header{{border-bottom:1px solid var(--border);padding:0 32px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(26,25,23,.92);backdrop-filter:blur(18px);z-index:100}}
 .logo{{font-size:14px;font-weight:600;letter-spacing:-.3px;color:var(--text);display:flex;align-items:center;gap:9px}}
-.logo-icon{{width:24px;height:24px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}}
+.logo-icon{{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:4px}}
 .header-center{{display:flex;align-items:center;gap:5px}}
 .hpill{{font-size:11px;font-weight:500;padding:3px 10px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:var(--surface)}}
 .hpill.live{{border-color:var(--border-hi);color:var(--sub)}}
@@ -1648,7 +1648,27 @@ code{{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:v
 
 <header>
   <div class="logo">
-    <div class="logo-icon">D</div>
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Cloud -->
+        <path d="M2.5 17.5 a4.5 4.5 0 0 1 0-9 a2.8 2.8 0 0 1 5.2-0.8 a3.5 3.5 0 1 1 0.6 9.8Z"
+          stroke="white" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- Hub circle -->
+        <circle cx="14.5" cy="9" r="2.2" stroke="white" stroke-width="1.5"/>
+        <circle cx="14.5" cy="9" r="0.8" fill="white"/>
+        <!-- Sweep line up -->
+        <line x1="14.5" y1="9" x2="14.5" y2="4.5" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+        <!-- Top-left node -->
+        <line x1="13" y1="7.2" x2="9.5" y2="4.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="9.5" cy="4.5" r="1.4" stroke="white" stroke-width="1.3"/>
+        <!-- Top-right node -->
+        <line x1="16.3" y1="7.2" x2="19.5" y2="4.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="19.5" cy="4.5" r="1.4" stroke="white" stroke-width="1.3"/>
+        <!-- Right-mid node -->
+        <line x1="16.5" y1="10.2" x2="19.5" y2="12.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="19.5" cy="12.5" r="1.4" stroke="white" stroke-width="1.3"/>
+      </svg>
+    </div>
     <span class="logo-name">DzeckAPI</span>
   </div>
   <div class="header-center">
