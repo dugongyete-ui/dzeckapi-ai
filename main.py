@@ -373,65 +373,10 @@ def delete_conversation(conv_id: str):
 
 
 # ── Provider registries ───────────────────────────────────────────────────────
+# Hanya HF Token providers — paling efisien, tidak butuh API key tambahan.
 
-CHAT_PROVIDERS = {
-    "pollinations": {
-        "provider": Provider.PollinationsAI,
-        "model":    "openai-fast",
-        "desc":     "GPT-OSS 20B via Pollinations",
-        "type":     "g4f",
-    },
-    "pollinations-direct": {
-        "provider": None,
-        "model":    "openai-fast",
-        "desc":     "GPT-OSS via Pollinations HTTP",
-        "type":     "pollinations_http",
-    },
-    "perplexity": {
-        "provider": Provider.Perplexity,
-        "model":    "auto",
-        "desc":     "Perplexity AI + pencarian web real-time",
-        "type":     "g4f",
-    },
-    "cohere": {
-        "provider": Provider.CohereForAI_C4AI_Command,
-        "model":    "command-a-03-2025",
-        "desc":     "Cohere Command-A",
-        "type":     "g4f",
-    },
-    "deepinfra": {
-        "provider": Provider.DeepInfra,
-        "model":    "MiniMaxAI/MiniMax-M2.5",
-        "desc":     "MiniMax M2.5 via DeepInfra",
-        "type":     "g4f",
-    },
-    "huggingspace": {
-        "provider": Provider.HuggingSpace,
-        "model":    "qwen-qwen2-72b-instruct",
-        "desc":     "Qwen2 72B via HuggingFace Space",
-        "type":     "g4f",
-    },
-    "aria": {
-        "provider": Provider.OperaAria,
-        "model":    "aria",
-        "desc":     "Opera Aria",
-        "type":     "g4f",
-    },
-    "yqcloud": {
-        "provider": Provider.Yqcloud,
-        "model":    "gpt-4",
-        "desc":     "GPT-4 via Yqcloud",
-        "type":     "g4f",
-    },
-}
-
-# ── Provider ordering: built explicitly in 4 tiers ───────────────────────────
-# Tier 1: HF_TOKEN  (all HF providers with token 1)
-# Tier 2: HF_TOKEN_2 (same HF providers but with a second token for extra quota)
-# Tier 3: Non-HF API providers (groq, gemini, cerebras, etc.)
-# Tier 4: Static / no-key providers (cohere, pollinations, aria, etc.)
-
-CHAT_ORDER = []
+CHAT_PROVIDERS = {}
+CHAT_ORDER     = []
 TOOL_CAPABLE_ORDER = []
 
 # ── HF provider definitions (ordered powerful → lightweight) ─────────────────
@@ -461,7 +406,7 @@ _HF_PROVIDERS = [
         "id":       "hf-cerebras-fast",
         "url":      "https://router.huggingface.co/cerebras/v1/chat/completions",
         "model":    "llama3.1-8b",
-        "desc":     "Llama 3.1 8B via HF Cerebras — speed-only, last-resort HF fallback",
+        "desc":     "Llama 3.1 8B via HF Cerebras — speed-only, last-resort fallback",
         "tool_cap": False,
     },
 ]
@@ -488,107 +433,23 @@ for _slot, _key_env in [("", "HF_TOKEN"), ("2", "HF_TOKEN_2")]:
         if _p["tool_cap"]:
             TOOL_CAPABLE_ORDER.append(_pid)
 
-# ── Non-HF API providers (ordered powerful → lightweight) ────────────────────
-_NON_HF_PROVIDERS = [
-    {
-        "key_env": "GROQ_API_KEY",
-        "id":      "groq",
-        "url":     "https://api.groq.com/openai/v1/chat/completions",
-        "model":   "llama-3.3-70b-versatile",
-        "desc":    "Groq LPU — Llama 3.3 70B, ultra-fast",
-        "tool_cap": True,
-    },
-    {
-        "key_env": "CEREBRAS_API_KEY",
-        "id":      "cerebras",
-        "url":     "https://api.cerebras.ai/v1/chat/completions",
-        "model":   "llama3.1-70b",
-        "desc":    "Cerebras — Llama 3.1 70B, ultra-fast inference",
-        "tool_cap": True,
-    },
-    {
-        "key_env": "SAMBANOVA_API_KEY",
-        "id":      "sambanova",
-        "url":     "https://api.sambanova.ai/v1/chat/completions",
-        "model":   "Meta-Llama-3.3-70B-Instruct",
-        "desc":    "SambaNova — Llama 3.3 70B",
-        "tool_cap": True,
-    },
-    {
-        "key_env": "TOGETHER_API_KEY",
-        "id":      "together",
-        "url":     "https://api.together.xyz/v1/chat/completions",
-        "model":   "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        "desc":    "Together AI — Llama 3.3 70B Turbo",
-        "tool_cap": True,
-    },
-    {
-        "key_env": "GEMINI_API_KEY",
-        "id":      "gemini",
-        "url":     "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-        "model":   "gemini-2.0-flash",
-        "desc":    "Google Gemini 2.0 Flash — fast, 1M context",
-        "tool_cap": True,
-    },
-    {
-        "key_env": "MISTRAL_API_KEY",
-        "id":      "mistral",
-        "url":     "https://api.mistral.ai/v1/chat/completions",
-        "model":   "mistral-small-latest",
-        "desc":    "Mistral Small Latest — lightweight fallback",
-        "tool_cap": True,
-    },
-]
-
-for _p in _NON_HF_PROVIDERS:
-    _key = os.environ.get(_p["key_env"], "").strip()
-    if not _key:
-        continue
-    CHAT_PROVIDERS[_p["id"]] = {
-        "type":        "openai_compatible",
-        "url":         _p["url"],
-        "model":       _p["model"],
-        "api_key":     _key,
-        "desc":        _p["desc"],
-        "hf_provider": False,
-    }
-    CHAT_ORDER.append(_p["id"])
-    if _p["tool_cap"]:
-        TOOL_CAPABLE_ORDER.append(_p["id"])
-
-# ── _OPT_PROVIDERS: all API-key-based providers (for /v1/providers inactive list) ──
+# ── _OPT_PROVIDERS: HF providers yang belum aktif (HF_TOKEN tidak di-set) ────
 _OPT_PROVIDERS = []
 for _p in _HF_PROVIDERS:
-    _OPT_PROVIDERS.append({
-        "id":      _p["id"],
-        "desc":    _p["desc"],
-        "model":   _p["model"],
-        "key_env": "HF_TOKEN",
-    })
-    _OPT_PROVIDERS.append({
-        "id":      _p["id"] + "-t2",
-        "desc":    _p["desc"] + " [token2]",
-        "model":   _p["model"],
-        "key_env": "HF_TOKEN_2",
-    })
-for _p in _NON_HF_PROVIDERS:
-    _OPT_PROVIDERS.append({
-        "id":      _p["id"],
-        "desc":    _p["desc"],
-        "model":   _p["model"],
-        "key_env": _p["key_env"],
-    })
-
-# ── Tier 4: static / no-key providers (appended last) ────────────────────────
-_STATIC_ORDER = [
-    "cohere", "deepinfra", "huggingspace", "perplexity",
-    "pollinations", "pollinations-direct", "aria", "yqcloud",
-]
-for _pid in _STATIC_ORDER:
-    if _pid in CHAT_PROVIDERS:
-        CHAT_ORDER.append(_pid)
-        if _pid in ("cohere", "deepinfra", "pollinations", "pollinations-direct", "aria"):
-            TOOL_CAPABLE_ORDER.append(_pid)
+    if _p["id"] not in CHAT_PROVIDERS:
+        _OPT_PROVIDERS.append({
+            "id":      _p["id"],
+            "desc":    _p["desc"],
+            "model":   _p["model"],
+            "key_env": "HF_TOKEN",
+        })
+    if (_p["id"] + "-t2") not in CHAT_PROVIDERS:
+        _OPT_PROVIDERS.append({
+            "id":      _p["id"] + "-t2",
+            "desc":    _p["desc"] + " [token2]",
+            "model":   _p["model"],
+            "key_env": "HF_TOKEN_2",
+        })
 
 # ── Public display names (clean, user-facing) ────────────────────────────────
 # Pemetaan internal ID → nama publik yang tampil di UI dan /v1/models.
@@ -599,15 +460,6 @@ _PUBLIC_LABEL: dict[str, str] = {
     "hf-hyperbolic":     "Llama-3.3-70B",
     "hf-cerebras":       "GPT-OSS-120B",
     "hf-cerebras-fast":  "Llama-3.1-8B",
-    # Static / g4f
-    "pollinations":         "Pollinations",
-    "pollinations-direct":  "Pollinations Turbo",
-    "perplexity":           "Perplexity",
-    "cohere":               "Cohere",
-    "deepinfra":            "DeepInfra",
-    "huggingspace":         "HuggingFace",
-    "aria":                 "Aria",
-    "yqcloud":              "YQCloud",
     # Audio
     "edge-id-female":        "Indonesia · Wanita",
     "edge-id-male":          "Indonesia · Pria",
@@ -642,46 +494,25 @@ _INTENT_PREFERRED = {
         "hf-cerebras-qwen",    # Qwen3 235B — best coding & math
         "hf-cerebras",         # GPT-OSS 120B — fast, native tool calls
         "hf-hyperbolic",       # Llama 3.3 70B — strong instruction following
-        "groq",                # Llama 3.3 70B — ultra fast
-        "cerebras",            # Llama 3.1 70B — fast
-        "together",            # Llama 3.3 70B Turbo
-        "sambanova",           # Llama 3.3 70B
-        "cohere",              # Command-A — solid coder
-        "deepinfra",           # MiniMax M2.5
-        "gemini",              # Gemini 2.0 Flash
+        "hf-cerebras-fast",    # Llama 3.1 8B — last resort
     ],
     "analysis": [
         "hf-hyperbolic",       # Llama 3.3 70B — most Claude-like, best nuance
         "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
         "hf-cerebras",         # GPT-OSS 120B
-        "groq",
-        "sambanova",
-        "together",
-        "cerebras",
-        "gemini",
-        "cohere",
-        "deepinfra",
-        "perplexity",          # web-augmented — good for research
+        "hf-cerebras-fast",
     ],
     "math": [
         "hf-cerebras-qwen",    # Qwen3 235B — best math
         "hf-cerebras",         # GPT-OSS 120B
         "hf-hyperbolic",
-        "groq",
-        "cerebras",
-        "together",
-        "sambanova",
-        "gemini",
-        "deepinfra",
-        "cohere",
+        "hf-cerebras-fast",
     ],
     "search": [
-        "hf-hyperbolic",       # Llama 3.3 70B — best instruction following + broad knowledge
+        "hf-hyperbolic",       # Llama 3.3 70B — best instruction following
         "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
         "hf-cerebras",         # GPT-OSS 120B — fast
-        "groq",
-        "perplexity",          # real-time web search (setelah HF exhausted)
-        "gemini",
+        "hf-cerebras-fast",
     ],
 }
 
@@ -751,31 +582,25 @@ def detect_intent(messages: list) -> str:
     return best_intent if scores[best_intent] > 0 else "general"
 
 
-def get_order_for_intent(intent: str) -> list:
+def get_order_for_intent(intent: str, pinned: str = None) -> list:
     """
-    Urutan provider optimal untuk intent dengan JAMINAN HF-first:
+    Urutan provider optimal untuk intent.
+    Semua provider adalah HF Token — t1 didahulukan, lalu t2 pasangannya.
 
-      Tier 1 : Semua HF token-1 (urutan sesuai intent preference)
-      Tier 2 : Semua HF token-2 berpasangan (langsung setelah t1 masing-masing)
-      Tier 3 : Non-HF API providers (groq, gemini, dll — jika API key tersedia)
-      Tier 4 : Static/g4f providers (perplexity, cohere, pollinations, dll)
-
-    HF token SELALU dihabiskan dulu sebelum jatuh ke provider di luar HF,
-    terlepas dari intent apapun.
+    Jika `pinned` diisi dengan provider ID yang valid, provider tersebut
+    diletakkan di posisi pertama (kemudian diikuti fallback urutan normal).
 
     Contoh untuk coding:
-      hf-cerebras-qwen → hf-cerebras-qwen-t2 → hf-cerebras → hf-cerebras-t2
-      → hf-hyperbolic → hf-hyperbolic-t2 → hf-cerebras-fast → hf-cerebras-fast-t2
-      → cohere → deepinfra → perplexity → ...
-
-    Contoh untuk search:
-      hf-hyperbolic → hf-hyperbolic-t2 → hf-cerebras-qwen → hf-cerebras-qwen-t2
-      → hf-cerebras → hf-cerebras-t2 → hf-cerebras-fast → hf-cerebras-fast-t2
-      → perplexity → cohere → deepinfra → ...
+      hf-cerebras-qwen → hf-cerebras-qwen-t2
+      → hf-cerebras → hf-cerebras-t2
+      → hf-hyperbolic → hf-hyperbolic-t2
+      → hf-cerebras-fast → hf-cerebras-fast-t2
     """
-    preferred = _INTENT_PREFERRED.get(intent, [])
+    preferred = _INTENT_PREFERRED.get(intent, [
+        "hf-cerebras-qwen", "hf-cerebras", "hf-hyperbolic", "hf-cerebras-fast",
+    ])
 
-    # Bangun ordered dari preferred (dengan t2 injeksi langsung setelah t1 pasangannya)
+    # Bangun ordered: t1 → t2 pasangannya langsung
     ordered = []
     seen = set()
     for pid in preferred:
@@ -783,21 +608,22 @@ def get_order_for_intent(intent: str) -> list:
             continue
         ordered.append(pid)
         seen.add(pid)
-        # Injeksi t2 langsung setelah t1 pasangannya
-        if CHAT_PROVIDERS[pid].get("hf_provider") and not CHAT_PROVIDERS[pid].get("is_t2"):
-            t2_pid = pid + "-t2"
-            if t2_pid in CHAT_PROVIDERS and t2_pid not in seen:
-                ordered.append(t2_pid)
-                seen.add(t2_pid)
+        t2_pid = pid + "-t2"
+        if t2_pid in CHAT_PROVIDERS and t2_pid not in seen:
+            ordered.append(t2_pid)
+            seen.add(t2_pid)
 
-    # Tambahkan sisa CHAT_ORDER yang belum masuk
-    remaining = [p for p in CHAT_ORDER if p not in seen]
-    full_order = ordered + remaining
+    # Sisa CHAT_ORDER yang belum masuk (fallback)
+    for p in CHAT_ORDER:
+        if p not in seen:
+            ordered.append(p)
+            seen.add(p)
 
-    # ── PAKSA HF-first: pisahkan HF vs non-HF, pertahankan urutan relatif ──
-    hf_first  = [p for p in full_order if CHAT_PROVIDERS.get(p, {}).get("hf_provider")]
-    non_hf    = [p for p in full_order if not CHAT_PROVIDERS.get(p, {}).get("hf_provider")]
-    return hf_first + non_hf
+    # Jika ada pinned provider, letakkan di depan
+    if pinned and pinned in CHAT_PROVIDERS:
+        ordered = [pinned] + [p for p in ordered if p != pinned]
+
+    return ordered
 
 
 IMAGE_PROVIDERS = {
@@ -1188,19 +1014,18 @@ def _provider_tier(pid: str) -> str:
 
 
 def run_chat_fallback(messages: list, model_override=None, require_tool_call: bool = False,
-                      intent: str = "general", tools: list = None):
+                      intent: str = "general", tools: list = None, pinned: str = None):
     """
-    Coba setiap provider secara berurutan dengan tier:
-      HF token-1  →  HF token-2  →  non-HF API (groq/gemini/dll)  →  static (g4f)
+    Coba setiap provider secara berurutan (semua HF Token).
 
     - intent            : hasil detect_intent(), menentukan urutan provider optimal
+    - pinned            : provider ID yang diminta user secara eksplisit — diletakkan pertama
     - require_tool_call : provider tanpa tool_calls JSON dianggap gagal
-    - tools             : list OpenAI tool definitions (dikirim native ke openai_compatible,
-                          diinjeksi via system message untuk g4f)
+    - tools             : list OpenAI tool definitions
     """
     errors = {}
-    # Pilih urutan berdasarkan intent (smart routing + t1→t2 interleaving)
-    base_order = get_order_for_intent(intent)
+    # Pilih urutan berdasarkan intent; pinned provider diletakkan paling depan
+    base_order = get_order_for_intent(intent, pinned=pinned)
 
     # Saat require_tool_call, dahulukan provider yang tool-capable dalam urutan intent
     if require_tool_call:
@@ -2890,12 +2715,15 @@ def v1_chat_completions():
     # Smart routing: deteksi intent dari pesan user
     intent = detect_intent(incoming_messages)
 
-    # Tidak meneruskan requested_model ke provider — tiap provider pakai model konfigurasinya sendiri
+    # Jika user minta model spesifik yang ada di CHAT_PROVIDERS, pin ke sana
+    pinned_provider = requested_model if requested_model in CHAT_PROVIDERS else None
+
     raw_text, provider_used, errors = run_chat_fallback(
         final_messages, None,
         require_tool_call=need_tc,
         intent=intent,
         tools=active_tools,
+        pinned=pinned_provider,
     )
 
     if not raw_text:
