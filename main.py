@@ -111,11 +111,12 @@ AUTHOR = "dzeck"
 
 @app.after_request
 def inject_author(response):
-    """Inject 'author' field into all JSON responses automatically."""
+    """Inject 'author' field hanya untuk non-/v1/ endpoints."""
     if response.direct_passthrough:
         return response
+    if request.path.startswith("/v1/"):
+        return response
     ct = response.content_type or ""
-    # Jangan sentuh streaming response
     if "text/event-stream" in ct:
         return response
     if "application/json" in ct:
@@ -1355,8 +1356,20 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def build_completion_response(content, provider_used, tool_calls=None, finish_reason="stop"):
-    """Buat response dalam format OpenAI Chat Completions."""
+def _count_prompt_tokens(messages: list) -> int:
+    """Estimasi prompt tokens dari daftar messages (overhead per-message sesuai tiktoken)."""
+    total = 0
+    for msg in (messages or []):
+        content = msg.get("content") or ""
+        if isinstance(content, list):
+            content = " ".join(p.get("text", "") for p in content if isinstance(p, dict))
+        total += _estimate_tokens(str(content)) + 4
+    return total + 2
+
+
+def build_completion_response(content, provider_used, tool_calls=None,
+                              finish_reason="stop", messages=None):
+    """Buat response dalam format OpenAI Chat Completions (standar resmi)."""
     msg = {"role": "assistant"}
     if tool_calls:
         msg["tool_calls"] = tool_calls
@@ -1365,24 +1378,27 @@ def build_completion_response(content, provider_used, tool_calls=None, finish_re
     else:
         msg["content"] = content
     completion_tokens = _estimate_tokens(content) if content else 0
+    prompt_tokens     = _count_prompt_tokens(messages)
     return {
-        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
-        "object": "chat.completion",
-        "created": int(time.time()),
-        "model": provider_used,
-        "provider_used": provider_used,
-        "author": AUTHOR,
+        "id":                 f"chatcmpl-{uuid.uuid4().hex[:12]}",
+        "object":             "chat.completion",
+        "created":            int(time.time()),
+        "model":              provider_used,
+        "system_fingerprint": f"fp_dzeck_{provider_used}",
         "choices": [
             {
-                "index": 0,
-                "message": msg,
+                "index":         0,
+                "message":       msg,
+                "logprobs":      None,
                 "finish_reason": finish_reason,
             }
         ],
         "usage": {
-            "prompt_tokens":     0,
-            "completion_tokens": completion_tokens,
-            "total_tokens":      completion_tokens,
+            "prompt_tokens":              prompt_tokens,
+            "completion_tokens":          completion_tokens,
+            "total_tokens":               prompt_tokens + completion_tokens,
+            "prompt_tokens_details":      None,
+            "completion_tokens_details":  None,
         },
     }
 
@@ -1391,8 +1407,7 @@ def _sse_chunk(resp_id, created, provider, delta, finish_reason=None):
     return "data: " + json.dumps({
         "id": resp_id, "object": "chat.completion.chunk",
         "created": created, "model": provider,
-        "provider_used": provider,
-        "author": AUTHOR,
+        "system_fingerprint": f"fp_dzeck_{provider}",
         "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
     }) + "\n\n"
 
@@ -2760,18 +2775,18 @@ def auth_regenerate_key():
 @app.route("/v1/models", methods=["GET"])
 def list_models():
     """OpenAI-compatible /v1/models endpoint."""
+    _MODEL_CREATED = 1706745088  # realistic Unix timestamp (Jan 2024)
     models = []
     for pid, cfg in CHAT_PROVIDERS.items():
         models.append({
-            "id": pid,
-            "object": "model",
-            "created": 0,
+            "id":       pid,
+            "object":   "model",
+            "created":  _MODEL_CREATED,
             "owned_by": AUTHOR,
-            "description": cfg.get("desc", ""),
         })
     return jsonify({
         "object": "list",
-        "data": models,
+        "data":   models,
     })
 
 
@@ -2886,9 +2901,6 @@ def v1_chat_completions():
     if not raw_text:
         return jsonify({"error": "Semua provider gagal.", "details": errors}), 503
 
-    # model label di response: pakai nama yang diminta client jika ada, fallback ke provider_used
-    response_model_label = requested_model or provider_used
-
     # ── Deteksi tool calls ────────────────────────────────────────────────────
     tool_calls_raw, is_tool_call = parse_tool_calls(raw_text)
 
@@ -2906,11 +2918,9 @@ def v1_chat_completions():
                 content_type="text/event-stream",
                 headers={"X-Conversation-Id": conv_id or "", "Cache-Control": "no-cache"},
             )
-        resp = build_completion_response(None, response_model_label, tool_calls=tool_calls)
-        resp["provider_used"] = provider_used
-        resp["conversation_id"] = conv_id
-        resp["intent"] = intent
-        return jsonify(resp)
+        resp = build_completion_response(None, provider_used, tool_calls=tool_calls,
+                                        messages=incoming_messages)
+        return jsonify(resp), 200, {"X-Conversation-Id": conv_id or ""}
 
     # ── Respons teks biasa ────────────────────────────────────────────────────
     new_history = [m for m in final_messages if m.get("role") != "system"]
@@ -2927,11 +2937,8 @@ def v1_chat_completions():
             content_type="text/event-stream",
             headers={"X-Conversation-Id": conv_id, "Cache-Control": "no-cache"},
         )
-    resp = build_completion_response(raw_text, response_model_label)
-    resp["provider_used"] = provider_used
-    resp["conversation_id"] = conv_id
-    resp["intent"] = intent
-    return jsonify(resp)
+    resp = build_completion_response(raw_text, provider_used, messages=incoming_messages)
+    return jsonify(resp), 200, {"X-Conversation-Id": conv_id}
 
 
 # ── Conversation management ───────────────────────────────────────────────────
