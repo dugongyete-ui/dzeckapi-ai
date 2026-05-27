@@ -468,6 +468,53 @@ CHAT_PROVIDERS["pollinations-gptoss"] = {
 CHAT_ORDER.append("pollinations-gptoss")
 TOOL_CAPABLE_ORDER.append("pollinations-gptoss")
 
+# ── G4F keyless providers — gratis, no API key, via g4f library ──────────────
+# Diregistrasi hanya jika g4f tersedia
+if G4F_AVAILABLE:
+    _G4F_CHAT_PROVIDERS = [
+        {
+            "id":       "g4f-deepinfra",
+            "provider": Provider.DeepInfra,
+            "model":    "",
+            "desc":     "Llama via DeepInfra (G4F) — free, fast, multi-turn",
+            "tool_cap": False,
+        },
+        {
+            "id":       "g4f-yqcloud",
+            "provider": Provider.Yqcloud,
+            "model":    "",
+            "desc":     "GPT via Yqcloud (G4F) — free, fastest ~1s",
+            "tool_cap": False,
+        },
+        {
+            "id":       "g4f-cohere",
+            "provider": Provider.CohereForAI_C4AI_Command,
+            "model":    "",
+            "desc":     "Cohere Command R via HF Space (G4F) — free, no key",
+            "tool_cap": False,
+        },
+        {
+            "id":       "g4f-perplexity",
+            "provider": Provider.Perplexity,
+            "model":    "",
+            "desc":     "Perplexity AI (G4F) — free, no key",
+            "tool_cap": False,
+        },
+    ]
+    for _gp in _G4F_CHAT_PROVIDERS:
+        CHAT_PROVIDERS[_gp["id"]] = {
+            "type":     "g4f",
+            "provider": _gp["provider"],
+            "model":    _gp["model"],
+            "desc":     _gp["desc"],
+            "hf_provider": False,
+            "is_t2":       False,
+            "g4f":         True,
+        }
+        CHAT_ORDER.append(_gp["id"])
+        if _gp["tool_cap"]:
+            TOOL_CAPABLE_ORDER.append(_gp["id"])
+
 # ── _OPT_PROVIDERS: HF providers yang belum aktif (HF_TOKEN tidak di-set) ────
 _OPT_PROVIDERS = []
 for _p in _HF_PROVIDERS:
@@ -497,6 +544,11 @@ _PUBLIC_LABEL: dict[str, str] = {
     "hf-cerebras-fast":   "Llama-3.1-8B",
     # Pollinations
     "pollinations-gptoss": "GPT-OSS-20B",
+    # G4F keyless
+    "g4f-deepinfra":   "Llama-3-8B",
+    "g4f-yqcloud":     "Yqcloud-GPT",
+    "g4f-cohere":      "Cohere-Command-R",
+    "g4f-perplexity":  "Perplexity-AI",
     # Audio
     "edge-id-female":        "Indonesia · Wanita",
     "edge-id-male":          "Indonesia · Pria",
@@ -531,15 +583,23 @@ _INTENT_PREFERRED = {
         "hf-cerebras-qwen",    # Qwen3 235B — best coding & math
         "hf-cerebras",         # GPT-OSS 120B — fast, native tool calls
         "hf-hyperbolic",       # Llama 3.3 70B — strong instruction following
-        "hf-cerebras-fast",    # Llama 3.1 8B — last resort
-        "pollinations-gptoss", # GPT-OSS 20B — free fallback
+        "hf-cerebras-fast",    # Llama 3.1 8B
+        "pollinations-gptoss", # GPT-OSS 20B — free, tool calls
+        "g4f-deepinfra",       # Llama 3 8B — free fallback
+        "g4f-cohere",          # Cohere Command R
+        "g4f-yqcloud",         # GPT wrapper — fastest
+        "g4f-perplexity",      # Perplexity — last resort
     ],
     "analysis": [
-        "hf-hyperbolic",       # Llama 3.3 70B — most Claude-like, best nuance
-        "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
+        "hf-hyperbolic",       # Llama 3.3 70B — most Claude-like
+        "hf-cerebras-qwen",    # Qwen3 235B — wide knowledge
         "hf-cerebras",         # GPT-OSS 120B
         "hf-cerebras-fast",
         "pollinations-gptoss",
+        "g4f-deepinfra",
+        "g4f-cohere",
+        "g4f-yqcloud",
+        "g4f-perplexity",
     ],
     "math": [
         "hf-cerebras-qwen",    # Qwen3 235B — best math
@@ -547,6 +607,10 @@ _INTENT_PREFERRED = {
         "hf-hyperbolic",
         "hf-cerebras-fast",
         "pollinations-gptoss",
+        "g4f-deepinfra",
+        "g4f-cohere",
+        "g4f-yqcloud",
+        "g4f-perplexity",
     ],
     "search": [
         "hf-hyperbolic",       # Llama 3.3 70B — best instruction following
@@ -554,6 +618,10 @@ _INTENT_PREFERRED = {
         "hf-cerebras",         # GPT-OSS 120B — fast
         "hf-cerebras-fast",
         "pollinations-gptoss",
+        "g4f-perplexity",      # Perplexity baik untuk search-like queries
+        "g4f-deepinfra",
+        "g4f-cohere",
+        "g4f-yqcloud",
     ],
 }
 
@@ -1049,6 +1117,8 @@ def _provider_tier(pid: str) -> str:
     cfg = CHAT_PROVIDERS.get(pid, {})
     if cfg.get("pollinations"):
         return "Pollinations"
+    if cfg.get("g4f"):
+        return "G4F"
     if cfg.get("hf_provider"):
         return "HF-t2" if cfg.get("is_t2") else "HF-t1"
     if cfg.get("type") == "openai_compatible":
