@@ -386,6 +386,32 @@ import time as _time_module
 
 _PROVIDER_CIRCUIT: dict[str, float] = {}  # pid → timestamp saat di-trip
 _CIRCUIT_TTL = 1800  # 30 menit
+_CIRCUIT_FILE = os.path.join(os.path.dirname(__file__), ".circuit_state.json")
+
+def _load_circuit_state() -> None:
+    """Muat state circuit breaker dari file (survive restart)."""
+    try:
+        if os.path.exists(_CIRCUIT_FILE):
+            with open(_CIRCUIT_FILE, "r") as f:
+                data = json.load(f)
+            now = _time_module.time()
+            # Hanya load yang belum expired
+            _PROVIDER_CIRCUIT.update({
+                pid: ts for pid, ts in data.items()
+                if now - ts < _CIRCUIT_TTL
+            })
+            if _PROVIDER_CIRCUIT:
+                print(f"[Circuit] Loaded {len(_PROVIDER_CIRCUIT)} tripped provider dari disk: {list(_PROVIDER_CIRCUIT.keys())}")
+    except Exception:
+        pass
+
+def _save_circuit_state() -> None:
+    """Simpan state circuit breaker ke file."""
+    try:
+        with open(_CIRCUIT_FILE, "w") as f:
+            json.dump(_PROVIDER_CIRCUIT, f)
+    except Exception:
+        pass
 
 def _is_tripped(pid: str) -> bool:
     ts = _PROVIDER_CIRCUIT.get(pid)
@@ -393,12 +419,16 @@ def _is_tripped(pid: str) -> bool:
         return False
     if _time_module.time() - ts > _CIRCUIT_TTL:
         del _PROVIDER_CIRCUIT[pid]
+        _save_circuit_state()
         return False
     return True
 
 def _trip_circuit(pid: str, reason: str = "402"):
     _PROVIDER_CIRCUIT[pid] = _time_module.time()
+    _save_circuit_state()
     print(f"[Circuit] {pid} di-trip ({reason}) — skip selama {_CIRCUIT_TTL//60} menit")
+
+_load_circuit_state()
 
 # ── HF provider definitions (ordered powerful → lightweight) ─────────────────
 _HF_PROVIDERS = [
