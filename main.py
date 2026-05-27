@@ -652,6 +652,13 @@ if G4F_AVAILABLE:
             "desc":     "Perplexity AI (G4F) — free, no key",
             "tool_cap": False,
         },
+        {
+            "id":       "g4f-opera",
+            "provider": Provider.OperaAria,
+            "model":    "aria",
+            "desc":     "Opera Aria (G4F) — free, anonymous OAuth, no key",
+            "tool_cap": False,
+        },
     ]
     for _gp in _G4F_CHAT_PROVIDERS:
         CHAT_PROVIDERS[_gp["id"]] = {
@@ -736,6 +743,7 @@ _PUBLIC_LABEL: dict[str, str] = {
     "g4f-yqcloud":     "Yqcloud-GPT",
     "g4f-cohere":      "Cohere-Command-R",
     "g4f-perplexity":  "Perplexity-AI",
+    "g4f-opera":       "Opera-Aria",
     # Audio
     "edge-id-female":        "Indonesia · Wanita",
     "edge-id-male":          "Indonesia · Pria",
@@ -778,6 +786,7 @@ _INTENT_PREFERRED = {
         "g4f-deepinfra",       # Llama 3 8B — free fallback
         "g4f-cohere",          # Cohere Command R
         "g4f-yqcloud",         # GPT wrapper — fastest
+        "g4f-opera",           # Opera Aria — free, anonymous OAuth
         "g4f-perplexity",      # Perplexity — last resort
     ],
     "analysis": [
@@ -792,6 +801,7 @@ _INTENT_PREFERRED = {
         "g4f-deepinfra",
         "g4f-cohere",
         "g4f-yqcloud",
+        "g4f-opera",
         "g4f-perplexity",
     ],
     "math": [
@@ -806,6 +816,7 @@ _INTENT_PREFERRED = {
         "g4f-deepinfra",
         "g4f-cohere",
         "g4f-yqcloud",
+        "g4f-opera",
         "g4f-perplexity",
     ],
     "search": [
@@ -821,6 +832,7 @@ _INTENT_PREFERRED = {
         "g4f-deepinfra",
         "g4f-cohere",
         "g4f-yqcloud",
+        "g4f-opera",
     ],
 }
 
