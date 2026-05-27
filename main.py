@@ -379,6 +379,27 @@ CHAT_PROVIDERS = {}
 CHAT_ORDER     = []
 TOOL_CAPABLE_ORDER = []
 
+# ── Circuit Breaker ────────────────────────────────────────────────────────────
+# Provider yang gagal 402 (Payment Required) di-skip selama CIRCUIT_TTL detik.
+# Setelah TTL habis, provider dicoba lagi (quota mungkin sudah reset).
+import time as _time_module
+
+_PROVIDER_CIRCUIT: dict[str, float] = {}  # pid → timestamp saat di-trip
+_CIRCUIT_TTL = 1800  # 30 menit
+
+def _is_tripped(pid: str) -> bool:
+    ts = _PROVIDER_CIRCUIT.get(pid)
+    if ts is None:
+        return False
+    if _time_module.time() - ts > _CIRCUIT_TTL:
+        del _PROVIDER_CIRCUIT[pid]
+        return False
+    return True
+
+def _trip_circuit(pid: str, reason: str = "402"):
+    _PROVIDER_CIRCUIT[pid] = _time_module.time()
+    print(f"[Circuit] {pid} di-trip ({reason}) — skip selama {_CIRCUIT_TTL//60} menit")
+
 # ── HF provider definitions (ordered powerful → lightweight) ─────────────────
 _HF_PROVIDERS = [
     {
@@ -1057,9 +1078,14 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
     else:
         order = base_order
 
-    print(f"[Routing] intent={intent} tool_call={require_tool_call} tools={bool(tools)} → {len(order)} provider")
+    # Hitung berapa provider yang aktif (belum di-trip circuit breaker)
+    active_order = [p for p in order if not _is_tripped(p)]
+    skipped = [p for p in order if _is_tripped(p)]
+    if skipped:
+        print(f"[Circuit] Skip {len(skipped)} provider (tripped): {skipped}")
+    print(f"[Routing] intent={intent} tool_call={require_tool_call} tools={bool(tools)} → {len(active_order)}/{len(order)} provider aktif")
 
-    for pk in order:
+    for pk in active_order:
         tier = _provider_tier(pk)
         try:
             print(f"[{tier}] mencoba {pk} ...")
@@ -1078,13 +1104,19 @@ def run_chat_fallback(messages: list, model_override=None, require_tool_call: bo
             print(f"[{tier}] {pk} → sukses ✓")
             return text, pk, errors
         except Exception as e:
-            errors[pk] = str(e)
+            err_str = str(e)
+            errors[pk] = err_str
+            # Trip circuit breaker untuk 402 (quota habis) dan 401 (token invalid)
+            if "402" in err_str or "Payment Required" in err_str:
+                _trip_circuit(pk, "402 quota habis")
+            elif "401" in err_str and CHAT_PROVIDERS[pk].get("hf_provider"):
+                _trip_circuit(pk, "401 token invalid")
             print(f"[{tier}] {pk} → error: {e}")
 
     # Semua provider tool-capable gagal → fallback teks biasa (tetap gunakan tools)
     if require_tool_call:
         print("[Routing] Semua provider tool-capable gagal → fallback plain text")
-        for pk in order:
+        for pk in active_order:
             tier = _provider_tier(pk)
             try:
                 text = run_chat(CHAT_PROVIDERS[pk], messages, model_override, tools=tools)
