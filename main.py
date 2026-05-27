@@ -433,6 +433,20 @@ for _slot, _key_env in [("", "HF_TOKEN"), ("2", "HF_TOKEN_2")]:
         if _p["tool_cap"]:
             TOOL_CAPABLE_ORDER.append(_pid)
 
+# ── Pollinations — permanent free provider (no API key required) ─────────────
+CHAT_PROVIDERS["pollinations-gptoss"] = {
+    "type":        "openai_compatible",
+    "url":         "https://text.pollinations.ai/openai",
+    "model":       "openai",
+    "api_key":     "",          # keyless — no auth header needed
+    "desc":        "GPT-OSS 20B Reasoning via Pollinations — free, no key, tool calls supported",
+    "hf_provider": False,
+    "is_t2":       False,
+    "pollinations": True,
+}
+CHAT_ORDER.append("pollinations-gptoss")
+TOOL_CAPABLE_ORDER.append("pollinations-gptoss")
+
 # ── _OPT_PROVIDERS: HF providers yang belum aktif (HF_TOKEN tidak di-set) ────
 _OPT_PROVIDERS = []
 for _p in _HF_PROVIDERS:
@@ -456,10 +470,12 @@ for _p in _HF_PROVIDERS:
 # t2 variants disembunyikan dari tampilan — hanya dipakai secara internal.
 _PUBLIC_LABEL: dict[str, str] = {
     # HF models
-    "hf-cerebras-qwen":  "Qwen3-235B",
-    "hf-hyperbolic":     "Llama-3.3-70B",
-    "hf-cerebras":       "GPT-OSS-120B",
-    "hf-cerebras-fast":  "Llama-3.1-8B",
+    "hf-cerebras-qwen":   "Qwen3-235B",
+    "hf-hyperbolic":      "Llama-3.3-70B",
+    "hf-cerebras":        "GPT-OSS-120B",
+    "hf-cerebras-fast":   "Llama-3.1-8B",
+    # Pollinations
+    "pollinations-gptoss": "GPT-OSS-20B",
     # Audio
     "edge-id-female":        "Indonesia · Wanita",
     "edge-id-male":          "Indonesia · Pria",
@@ -495,24 +511,28 @@ _INTENT_PREFERRED = {
         "hf-cerebras",         # GPT-OSS 120B — fast, native tool calls
         "hf-hyperbolic",       # Llama 3.3 70B — strong instruction following
         "hf-cerebras-fast",    # Llama 3.1 8B — last resort
+        "pollinations-gptoss", # GPT-OSS 20B — free fallback
     ],
     "analysis": [
         "hf-hyperbolic",       # Llama 3.3 70B — most Claude-like, best nuance
         "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
         "hf-cerebras",         # GPT-OSS 120B
         "hf-cerebras-fast",
+        "pollinations-gptoss",
     ],
     "math": [
         "hf-cerebras-qwen",    # Qwen3 235B — best math
         "hf-cerebras",         # GPT-OSS 120B
         "hf-hyperbolic",
         "hf-cerebras-fast",
+        "pollinations-gptoss",
     ],
     "search": [
         "hf-hyperbolic",       # Llama 3.3 70B — best instruction following
         "hf-cerebras-qwen",    # Qwen3 235B — wide factual knowledge
         "hf-cerebras",         # GPT-OSS 120B — fast
         "hf-cerebras-fast",
+        "pollinations-gptoss",
     ],
 }
 
@@ -939,16 +959,16 @@ def run_chat(cfg, messages: list, model_override=None, tools=None):
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
-        api_key = cfg["api_key"]
-        r = requests.post(
-            cfg["url"],
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-            timeout=30,
-        )
+        api_key = cfg.get("api_key", "")
+        hdrs = {"Content-Type": "application/json"}
+        if api_key:
+            hdrs["Authorization"] = f"Bearer {api_key}"
+        r = requests.post(cfg["url"], headers=hdrs, json=payload, timeout=35)
+        # Pollinations 429 (queue full) → retry sekali dengan backoff
+        if r.status_code == 429 and cfg.get("pollinations"):
+            import time as _time
+            _time.sleep(3)
+            r = requests.post(cfg["url"], headers=hdrs, json=payload, timeout=40)
         # Fast-path: jika HF t1 rate-limited (429) → langsung retry dengan HF_TOKEN_2
         # Hanya berlaku untuk t1 provider, dan hanya jika token-nya memang berbeda
         if r.status_code == 429 and cfg.get("hf_provider") and not cfg.get("is_t2"):
@@ -1006,6 +1026,8 @@ def run_chat(cfg, messages: list, model_override=None, tools=None):
 def _provider_tier(pid: str) -> str:
     """Label tier provider untuk logging."""
     cfg = CHAT_PROVIDERS.get(pid, {})
+    if cfg.get("pollinations"):
+        return "Pollinations"
     if cfg.get("hf_provider"):
         return "HF-t2" if cfg.get("is_t2") else "HF-t1"
     if cfg.get("type") == "openai_compatible":
