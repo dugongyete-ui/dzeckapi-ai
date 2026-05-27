@@ -32,6 +32,13 @@ except Exception as _g4f_err:
     g4f_client = None
     G4F_AVAILABLE = False
 
+# ── Qwen cookie generator (dari g4f, opsional) ────────────────────────────────
+try:
+    from g4f.Provider.qwen.cookie_generator import generate_cookies as _qwen_gen_cookies
+    _QWEN_COOKIES_AVAILABLE = True
+except Exception:
+    _QWEN_COOKIES_AVAILABLE = False
+
 app = Flask(__name__)
 
 # ── MongoDB ────────────────────────────────────────────────────────────────────
@@ -430,6 +437,121 @@ def _trip_circuit(pid: str, reason: str = "402"):
 
 _load_circuit_state()
 
+# ── Qwen AI keyless provider (chat.qwen.ai) ───────────────────────────────────
+# Tiga model tersedia: flash (cepat), plus (balanced), max (paling kuat).
+# Tidak butuh login/API key — menggunakan bx-umidtoken + generated cookies.
+_QWEN_MIDTOKEN: str = ""
+_QWEN_MIDTOKEN_TS: float = 0.0
+_QWEN_TOKEN_TTL: int = 3600  # cache 1 jam
+
+def _get_qwen_midtoken() -> str:
+    """Ambil bx-umidtoken dari Alibaba CDN, di-cache 1 jam."""
+    global _QWEN_MIDTOKEN, _QWEN_MIDTOKEN_TS
+    if _QWEN_MIDTOKEN and (_time_module.time() - _QWEN_MIDTOKEN_TS) < _QWEN_TOKEN_TTL:
+        return _QWEN_MIDTOKEN
+    try:
+        r = requests.get("https://sg-wum.alibaba.com/w/wu.json", timeout=8,
+            headers={"User-Agent": "Mozilla/5.0 Chrome/138.0.0.0 Safari/537.36"})
+        import re as _re2
+        m = _re2.search(r"(?:umx\.wu|__fycb)\('([^']+)'\)", r.text)
+        if m:
+            _QWEN_MIDTOKEN = m.group(1)
+            _QWEN_MIDTOKEN_TS = _time_module.time()
+            return _QWEN_MIDTOKEN
+    except Exception:
+        pass
+    return ""
+
+def _qwen_headers() -> dict:
+    """Build headers untuk request ke chat.qwen.ai."""
+    cookie_str = ""
+    if _QWEN_COOKIES_AVAILABLE:
+        try:
+            cd = _qwen_gen_cookies()
+            cookie_str = f'ssxmod_itna={cd["ssxmod_itna"]};ssxmod_itna2={cd["ssxmod_itna2"]}'
+        except Exception:
+            pass
+    midtoken = _get_qwen_midtoken()
+    h = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36",
+        "Accept": "*/*", "Accept-Language": "en-US,en;q=0.5",
+        "Origin": "https://chat.qwen.ai", "Referer": "https://chat.qwen.ai/",
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest", "X-Source": "web",
+        "bx-v": "2.5.31",
+    }
+    if midtoken:
+        h["bx-umidtoken"] = midtoken
+    if cookie_str:
+        h["Cookie"] = cookie_str
+    return h
+
+def _qwen_chat(messages: list, model: str = "qwen3.6-plus") -> str:
+    """
+    Kirim pesan ke chat.qwen.ai tanpa login.
+    Flow: POST /api/v2/chats/new → POST /api/v2/chat/completions (SSE).
+    """
+    h = _qwen_headers()
+    # Step 1: buat sesi chat baru
+    r1 = requests.post("https://chat.qwen.ai/api/v2/chats/new", headers=h, timeout=12,
+        json={"title": "New Chat", "models": [model],
+              "chat_mode": "normal", "chat_type": "t2t",
+              "timestamp": int(_time_module.time() * 1000)})
+    r1.raise_for_status()
+    d1 = r1.json()
+    if not d1.get("success"):
+        raise RuntimeError(f"[Qwen] new chat failed: {d1}")
+    chat_id = d1["data"]["id"]
+
+    # Step 2: kirim semua messages, ambil hanya konten user terakhir sebagai prompt
+    # tapi sertakan history sebagai context (convert format)
+    prompt = ""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            prompt = m.get("content", "")
+            break
+    msg_id = str(uuid.uuid4())
+    payload = {
+        "stream": True, "incremental_output": True,
+        "chat_id": chat_id, "chat_mode": "normal", "model": model,
+        "parent_id": None,
+        "messages": [{
+            "fid": msg_id, "parentId": None, "childrenIds": [],
+            "role": "user", "content": prompt, "user_action": "chat",
+            "files": [], "models": [model], "chat_type": "t2t",
+            "feature_config": {
+                "thinking_enabled": False, "output_schema": "phase", "thinking_budget": 81920
+            },
+            "sub_chat_type": "t2t",
+        }],
+    }
+    r2 = requests.post(
+        f"https://chat.qwen.ai/api/v2/chat/completions?chat_id={chat_id}",
+        headers=h, json=payload, timeout=30,
+    )
+    r2.raise_for_status()
+
+    # Parse SSE stream — kumpulkan delta content dari phase=answer
+    result = []
+    for line in r2.text.split("\n"):
+        line = line.strip()
+        if not line.startswith("data:"):
+            continue
+        try:
+            chunk = json.loads(line[5:].strip())
+            choices = chunk.get("choices", [])
+            if not choices:
+                continue
+            delta = choices[0].get("delta", {})
+            if delta.get("phase") == "answer" and delta.get("content"):
+                result.append(delta["content"])
+        except Exception:
+            continue
+    text = "".join(result).strip()
+    if not text:
+        raise RuntimeError("[Qwen] respons kosong dari SSE stream")
+    return text
+
 # ── HF provider definitions (ordered powerful → lightweight) ─────────────────
 _HF_PROVIDERS = [
     {
@@ -545,6 +667,37 @@ if G4F_AVAILABLE:
         if _gp["tool_cap"]:
             TOOL_CAPABLE_ORDER.append(_gp["id"])
 
+# ── Qwen AI keyless providers (chat.qwen.ai) — 3 tier model ──────────────────
+if _QWEN_COOKIES_AVAILABLE:
+    _QWEN_CHAT_PROVIDERS = [
+        {
+            "id":    "qwen-flash",
+            "model": "qwen3.5-flash",
+            "desc":  "Qwen3.5-Flash via chat.qwen.ai — free, cepat, tanpa login",
+        },
+        {
+            "id":    "qwen-plus",
+            "model": "qwen3.6-plus",
+            "desc":  "Qwen3.6-Plus via chat.qwen.ai — free, balanced, tanpa login",
+        },
+        {
+            "id":    "qwen-max",
+            "model": "qwen3.7-max",
+            "desc":  "Qwen3.7-Max via chat.qwen.ai — free, paling kuat, tanpa login",
+        },
+    ]
+    for _qp in _QWEN_CHAT_PROVIDERS:
+        CHAT_PROVIDERS[_qp["id"]] = {
+            "type":        "qwen",
+            "model":       _qp["model"],
+            "desc":        _qp["desc"],
+            "hf_provider": False,
+            "is_t2":       False,
+            "g4f":         False,
+            "qwen":        True,
+        }
+        CHAT_ORDER.append(_qp["id"])
+
 # ── _OPT_PROVIDERS: HF providers yang belum aktif (HF_TOKEN tidak di-set) ────
 _OPT_PROVIDERS = []
 for _p in _HF_PROVIDERS:
@@ -574,6 +727,10 @@ _PUBLIC_LABEL: dict[str, str] = {
     "hf-cerebras-fast":   "Llama-3.1-8B",
     # Pollinations
     "pollinations-gptoss": "GPT-OSS-20B",
+    # Qwen AI keyless
+    "qwen-flash": "Qwen3.5-Flash",
+    "qwen-plus":  "Qwen3.6-Plus",
+    "qwen-max":   "Qwen3.7-Max",
     # G4F keyless
     "g4f-deepinfra":   "Llama-3-8B",
     "g4f-yqcloud":     "Yqcloud-GPT",
@@ -615,6 +772,9 @@ _INTENT_PREFERRED = {
         "hf-hyperbolic",       # Llama 3.3 70B — strong instruction following
         "hf-cerebras-fast",    # Llama 3.1 8B
         "pollinations-gptoss", # GPT-OSS 20B — free, tool calls
+        "qwen-max",            # Qwen3.7-Max — free, strong coding
+        "qwen-plus",           # Qwen3.6-Plus — free, balanced
+        "qwen-flash",          # Qwen3.5-Flash — free, cepat
         "g4f-deepinfra",       # Llama 3 8B — free fallback
         "g4f-cohere",          # Cohere Command R
         "g4f-yqcloud",         # GPT wrapper — fastest
@@ -626,6 +786,9 @@ _INTENT_PREFERRED = {
         "hf-cerebras",         # GPT-OSS 120B
         "hf-cerebras-fast",
         "pollinations-gptoss",
+        "qwen-max",            # Qwen3.7-Max — free, analysis
+        "qwen-plus",
+        "qwen-flash",
         "g4f-deepinfra",
         "g4f-cohere",
         "g4f-yqcloud",
@@ -637,6 +800,9 @@ _INTENT_PREFERRED = {
         "hf-hyperbolic",
         "hf-cerebras-fast",
         "pollinations-gptoss",
+        "qwen-max",            # Qwen3.7-Max — Qwen sangat kuat di math
+        "qwen-plus",
+        "qwen-flash",
         "g4f-deepinfra",
         "g4f-cohere",
         "g4f-yqcloud",
@@ -649,6 +815,9 @@ _INTENT_PREFERRED = {
         "hf-cerebras-fast",
         "pollinations-gptoss",
         "g4f-perplexity",      # Perplexity baik untuk search-like queries
+        "qwen-plus",
+        "qwen-max",
+        "qwen-flash",
         "g4f-deepinfra",
         "g4f-cohere",
         "g4f-yqcloud",
@@ -1064,6 +1233,8 @@ def run_chat(cfg, messages: list, model_override=None, tools=None):
       Untuk g4f providers → diinjeksi ke system message (JSON injection).
     """
     model = model_override or cfg["model"]
+    if cfg["type"] == "qwen":
+        return _qwen_chat(messages, model=model or cfg["model"])
     if cfg["type"] == "pollinations_http":
         r = requests.post(
             "https://text.pollinations.ai/",
@@ -1145,6 +1316,8 @@ def run_chat(cfg, messages: list, model_override=None, tools=None):
 def _provider_tier(pid: str) -> str:
     """Label tier provider untuk logging."""
     cfg = CHAT_PROVIDERS.get(pid, {})
+    if cfg.get("qwen"):
+        return "Qwen"
     if cfg.get("pollinations"):
         return "Pollinations"
     if cfg.get("g4f"):
